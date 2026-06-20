@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faillefox — Pare-feu</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🦊</span>
+      <div>
+        <h1>Faillefox</h1>
+        <p class="tagline">Le pare-feu qui, lui, protège vraiment.</p>
+      </div>
+    </div>
+    <div class="status" id="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">chargement…</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="simple">Mode simple</button>
+    <button class="tab" data-tab="advanced">Mode avancé</button>
+    <button class="tab" data-tab="logs">Journal</button>
+  </nav>
+
+  <main>
+    <!-- MODE SIMPLE : interrupteurs par application -->
+    <section id="tab-simple" class="panel active">
+      <div class="card">
+        <h2>Applications</h2>
+        <p class="hint">Activez ou désactivez l'accès Internet de chaque application.</p>
+        <ul id="apps-list" class="apps"></ul>
+      </div>
+      <div class="card">
+        <h2>Comportement par défaut</h2>
+        <p class="hint">Que faire quand une application tente d'accéder à Internet sans règle explicite ?</p>
+        <div class="default-choice" id="default-choice">
+          <button data-decision="allow">Autoriser</button>
+          <button data-decision="deny" class="danger">Bloquer</button>
+          <button data-decision="ask" class="warn">Demander</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODE AVANCÉ : règles IP/port/protocole -->
+    <section id="tab-advanced" class="panel">
+      <div class="card">
+        <h2>Règles avancées</h2>
+        <p class="hint">Définissez des règles précises (application, protocole, port, IP).</p>
+        <form id="rule-form" class="rule-form">
+          <input type="hidden" name="action" value="deny" />
+          <label>Application (ID)
+            <select name="app_id" id="rule-app"></select>
+          </label>
+          <label>Action
+            <select name="action">
+              <option value="allow">Autoriser</option>
+              <option value="deny" selected>Bloquer</option>
+            </select>
+          </label>
+          <label>Protocole
+            <select name="protocol">
+              <option value="">Tous</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+            </select>
+          </label>
+          <label>Port (0 = tous)
+            <input type="number" name="port" value="0" min="0" max="65535" />
+          </label>
+          <label>IP (vide = toutes)
+            <input type="text" name="ip" placeholder="ex: 192.168.1.1" />
+          </label>
+          <button type="submit" class="primary">Ajouter la règle</button>
+        </form>
+        <table class="rules-table">
+          <thead><tr><th>App</th><th>Action</th><th>Proto</th><th>Port</th><th>IP</th><th></th></tr></thead>
+          <tbody id="rules-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- JOURNAL : événements en direct (SSE) -->
+    <section id="tab-logs" class="panel">
+      <div class="card">
+        <h2>Journal en temps réel</h2>
+        <p class="hint">Chaque connexion interceptée et chaque décision prise apparaissent ici.</p>
+        <div id="logs" class="logs"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Faillefox · <a href="https://github.com/dlnraja/faillefox" target="_blank" rel="noopener">code source</a> · GPL-3.0
+      · Né en réaction à la parodie <a href="https://faillefox.com" target="_blank" rel="noopener">faillefox.com</a>.
+    </p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

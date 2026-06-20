@@ -1,0 +1,30 @@
+# Binaires
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/faillefox
+
+# Données locales d'exécution
+*.db
+*.sqlite
+*.sqlite3
+config.json
+policies.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node (pour le build du front)
+node_modules/
+
+# Gomobile
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
