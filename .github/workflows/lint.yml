@@ -26,9 +26,10 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          # golangci-lint v2.x est requis : il est compilé avec une version
-          # de Go >= 1.24 et peut donc analyser du code ciblant Go 1.26.
-          # Les versions v1.x (compilées avec Go <= 1.24) refusent de tourner.
-          # NB : golangci-lint v2 nécessite golangci-lint-action v7+.
-          version: v2.0.2
+          # golangci-lint ne peut analyser que du code ciblant une version
+          # de Go <= celle avec laquelle il a été compilé.
+          # Go 1.26 exige donc une version récente de golangci-lint (v2.12+,
+          # compilée avec Go 1.26). Les versions v1.x et v2.x anciennes
+          # (compilées avec Go <= 1.25) refusent de tourner sur notre module.
+          version: v2.12.1
           args: --timeout=5m
