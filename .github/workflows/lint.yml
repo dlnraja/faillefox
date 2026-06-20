@@ -26,7 +26,9 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.62
+          # Version récente requise : golangci-lint doit être compilé avec
+          # une version de Go >= celle ciblée par le module (1.26).
+          version: v1.64
           # On reste permissif au début du projet : seuls les problèmes
           # sérieux font échouer le lint. Les TODO de style seront
           # adressés au fil de l'eau.
