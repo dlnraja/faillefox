@@ -1,0 +1,59 @@
+# CI : build, vet, test — sur plusieurs OS et versions de Go.
+# Se déclenche à chaque push sur master et sur chaque PR.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test (${{ matrix.os }} / Go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Un OS qui échoue ne fait pas échouer les autres : on voit tous les
+      # résultats, utile pour détecter les régressions spécifiques à une
+      # plateforme.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go: ["1.26"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Vet
+        # go vet détecte les constructions suspectes. Doit être propre.
+        run: go vet ./...
+
+      - name: Build
+        # Vérifie que TOUT le module compile, sur chaque OS.
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      - name: Build binary (smoke test)
+        # Compile le binaire réel pour confirmer que le point d'entrée
+        # est sain sur chaque plateforme.
+        run: go build -o faillefox-${{ matrix.os }} ./cmd/faillefox
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: faillefox-${{ matrix.os }}
+          path: faillefox-${{ matrix.os }}*
+          retention-days: 14

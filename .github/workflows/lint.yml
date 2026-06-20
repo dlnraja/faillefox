@@ -1,0 +1,33 @@
+# Lint : analyse statique avec golangci-lint.
+# Tourne sur les PR pour attraper tôt les problèmes de qualité de code.
+name: Lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62
+          # On reste permissif au début du projet : seuls les problèmes
+          # sérieux font échouer le lint. Les TODO de style seront
+          # adressés au fil de l'eau.
+          args: --timeout=5m

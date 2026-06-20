@@ -1,5 +1,11 @@
 # 🦊 Faillefox — le pare-feu qui, lui, protège vraiment
 
+[![CI](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml)
+[![Lint](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Release](https://github.com/dlnraja/faillefox/actions/workflows/release.yml/badge.svg)](https://github.com/dlnraja/faillefox/releases)
+
 > **Faillefox est un VRAI pare-feu gratuit, libre (GPL-3.0) et multiplateforme**
 > (Windows / Android / Linux), né en réaction à la parodie
 > [`faillefox.com`](https://faillefox.com) — elle-même née d'une perle

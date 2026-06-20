@@ -1,0 +1,74 @@
+# Release : cross-compile multi-OS + archives + sommes de contrôle,
+# puis crée une GitHub Release sur chaque tag v*.*.*
+#
+# Déclenchement : pousser un tag de version.
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Produit des binaires pour Windows, Linux, macOS (amd64 + arm64), ZIP/tar.gz
+# et un fichier SHA256SUMS vérifiable. L'UI web est embarquée via go:embed :
+# chaque binaire est autonome, sans fichier externe.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # nécessaire pour créer la release et uploader les assets
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Cross-compile all targets
+        # Une matrice de couples GOOS/GOARCH. CGO_ENABLED=0 pour des
+        # binaires statiques portables. -trimpath -ldflags="-s -w" pour
+        # des binaires plus petits sans infos de debug.
+        run: |
+          mkdir -p dist
+          build_one () {
+            local os="$1" arch="$2" ext=""
+            if [ "$os" = "windows" ]; then ext=".exe"; fi
+            echo "==> $os/$arch"
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags="-s -w" \
+              -o "dist/faillefox-${os}-${arch}${ext}" \
+              ./cmd/faillefox
+          }
+          build_one windows amd64
+          build_one windows arm64
+          build_one linux   amd64
+          build_one linux   arm64
+          build_one darwin  amd64
+          build_one darwin  arm64
+
+      - name: Package archives + checksums
+        # ZIP pour Windows, tar.gz pour Unix, puis sommes SHA256.
+        run: |
+          cd dist
+          for f in faillefox-*; do
+            case "$f" in
+              *.exe) zip -q "${f}.zip" "$f" ;;
+              *)     tar -czf "${f}.tar.gz" "$f" ;;
+            esac
+          done
+          sha256sum faillefox-*.zip faillefox-*.tar.gz > SHA256SUMS
+          ls -la
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true # notes auto depuis les PRs/commits
+          files: |
+            dist/faillefox-*.zip
+            dist/faillefox-*.tar.gz
+            dist/SHA256SUMS
