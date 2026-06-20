@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"net"
 	"time"
 
 	"github.com/dlnraja/faillefox/internal/core"
@@ -116,13 +115,4 @@ func (d *Driver) Stop() error {
 		d.cancel()
 	}
 	return nil
-}
-
-// hostNames résout une IP en nom d'hôte (utilitaire, best-effort).
-func hostNames(ip string) string {
-	names, err := net.LookupAddr(ip)
-	if err != nil || len(names) == 0 {
-		return ""
-	}
-	return names[0]
 }

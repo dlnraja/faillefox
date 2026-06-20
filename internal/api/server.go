@@ -225,7 +225,9 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			writeSSE(w, ev)
 			flusher.Flush()
 		case <-keepAlive.C:
-			fmt.Fprintf(w, ": ping\n\n")
+			// keep-alive SSE : le retour d'erreur n'est pas récupérable
+			// (client déconnecté), on l'ignore volontairement.
+			_, _ = fmt.Fprintf(w, ": ping\n\n")
 			flusher.Flush()
 		}
 	}
@@ -240,7 +242,8 @@ func writeJSON(w http.ResponseWriter, v any) {
 
 func writeSSE(w http.ResponseWriter, ev core.Event) {
 	data, _ := json.Marshal(ev)
-	fmt.Fprintf(w, "data: %s\n\n", data)
+	// Le retour d'erreur d'écriture n'est pas récupérable ici.
+	_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 }
 
 // PortFromArgs parse un numéro de port depuis une chaîne.
