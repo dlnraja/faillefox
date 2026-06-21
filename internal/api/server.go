@@ -22,6 +22,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/cvefeed"
+	"github.com/dlnraja/faillefox/internal/securitycenter"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
 
@@ -41,6 +42,9 @@ type Server struct {
 	updater *updater.Updater // nil = auto-update désactivé
 	scanner *clamscan.Scanner // nil = ClamAV désactivé
 	feed    *cvefeed.Feed     // nil = veille CVE désactivée
+
+	// Centre de sécurité v0.9 — vue unifiée de toutes les protections.
+	secCenter *securitycenter.Center
 }
 
 // SetUpdater branche l'updater pour l'endpoint /api/updater.
@@ -51,6 +55,9 @@ func (s *Server) SetScanner(sc *clamscan.Scanner) { s.scanner = sc }
 
 // SetFeed branche le feed CVE pour /api/cve.
 func (s *Server) SetFeed(f *cvefeed.Feed) { s.feed = f }
+
+// SetSecurityCenter branche le centre de sécurité pour /api/security-center.
+func (s *Server) SetSecurityCenter(c *securitycenter.Center) { s.secCenter = c }
 
 // New crée un serveur lié à 127.0.0.1:port.
 func New(engine *core.Engine, driver core.Driver, port int) *Server {
@@ -64,8 +71,9 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/events", s.handleEvents)   // SSE
 	mux.HandleFunc("/api/decide", s.handleDecide)   // réponse manuelle à un "ask"
 	mux.HandleFunc("/api/updater", s.handleUpdater) // état de l'auto-update
-	mux.HandleFunc("/api/scan", s.handleScan)       // scan ClamAV
-	mux.HandleFunc("/api/cve", s.handleCVE)         // alertes CVE
+	mux.HandleFunc("/api/scan", s.handleScan)              // scan ClamAV
+	mux.HandleFunc("/api/cve", s.handleCVE)                // alertes CVE
+	mux.HandleFunc("/api/security-center", s.handleSecCenter) // vue unifiée protections
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
@@ -313,6 +321,23 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 	}
 	alerts := s.feed.CheckSoftware(body.Software)
 	writeJSON(w, map[string]any{"alerts": alerts})
+}
+
+// handleSecCenter expose la vue unifiée de toutes les protections :
+// résumé (score, nb actives/inactives) + état détaillé de chaque couche.
+func (s *Server) handleSecCenter(w http.ResponseWriter, r *http.Request) {
+	if s.secCenter == nil {
+		// Si pas de centre branché, on renvoie un état vide mais valide.
+		writeJSON(w, map[string]any{
+			"summary":     map[string]any{"total": 0, "active": 0, "score": 0},
+			"protections": []any{},
+		})
+		return
+	}
+	writeJSON(w, map[string]any{
+		"summary":     s.secCenter.GetSummary(),
+		"protections": s.secCenter.States(),
+	})
 }
 
 // ---- helpers --------------------------------------------------------------

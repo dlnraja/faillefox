@@ -22,7 +22,8 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="simple">Mode simple</button>
+    <button class="tab active" data-tab="security">🛡️ Centre de sécurité</button>
+    <button class="tab" data-tab="simple">Mode simple</button>
     <button class="tab" data-tab="advanced">Mode avancé</button>
     <button class="tab" data-tab="logs">Journal</button>
     <button class="tab" data-tab="update">Auto-update</button>
@@ -31,8 +32,21 @@
   </nav>
 
   <main>
+    <!-- CENTRE DE SÉCURITÉ : vue synthétique de toutes les protections -->
+    <section id="tab-security" class="panel active">
+      <div class="card">
+        <h2>Centre de sécurité</h2>
+        <p class="hint">Vue d'ensemble de toutes les protections Faillefox. Chaque carte indique si la couche est active.</p>
+        <div id="sec-summary" class="sec-score">chargement…</div>
+      </div>
+      <div class="card">
+        <h2>Protections</h2>
+        <div id="sec-protections" class="sec-grid"></div>
+      </div>
+    </section>
+
     <!-- MODE SIMPLE : interrupteurs par application -->
-    <section id="tab-simple" class="panel active">
+    <section id="tab-simple" class="panel">
       <div class="card">
         <h2>Applications</h2>
         <p class="hint">Activez ou désactivez l'accès Internet de chaque application.</p>

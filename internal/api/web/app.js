@@ -303,16 +303,69 @@ document.getElementById("scan-form").addEventListener("submit", async (e) => {
   }
 });
 
+// ---- centre de sécurité : vue unifiée des protections -------------------
+async function refreshSecurityCenter() {
+  const summaryEl = document.getElementById("sec-summary");
+  const gridEl = document.getElementById("sec-protections");
+  try {
+    const data = await getJSON("/api/security-center");
+    const s = data.summary || {};
+    const score = s.score || 0;
+    const cls = score >= 75 ? "good" : score >= 40 ? "mid" : "bad";
+    summaryEl.innerHTML = `
+      <div class="big ${cls}">${score}%</div>
+      <div class="label">Score de protection</div>
+      <div class="details">
+        <div class="stat active"><span class="n">${s.active || 0}</span> actives</div>
+        <div class="stat limited"><span class="n">${s.limited || 0}</span> limitées</div>
+        <div class="stat inactive"><span class="n">${s.inactive || 0}</span> inactives</div>
+        <div class="stat"><span class="n">${s.error || 0}</span> en erreur</div>
+      </div>`;
+
+    const prots = data.protections || [];
+    if (prots.length === 0) {
+      gridEl.innerHTML = `<p class="empty">Aucune protection déclarée.</p>`;
+      return;
+    }
+    const statusLabel = { active: "Actif", inactive: "Inactif", limited: "Limité", error: "Erreur" };
+    gridEl.innerHTML = prots
+      .map((p) => {
+        let statsHtml = "";
+        if (p.stats) {
+          const entries = Object.entries(p.stats)
+            .map(([k, v]) => `${esc(k)}: <strong>${v}</strong>`)
+            .join(" · ");
+          statsHtml = `<div class="stats">${entries}</div>`;
+        }
+        return `
+      <div class="sec-card ${p.status}">
+        <div class="head">
+          <span class="icon">${esc(p.icon || "🔒")}</span>
+          <span class="name">${esc(p.name)}</span>
+          <span class="pill ${p.status}">${statusLabel[p.status] || p.status}</span>
+        </div>
+        <div class="cat">${esc(p.category || "")}</div>
+        <div class="desc">${esc(p.description || "")}</div>
+        ${statsHtml}
+      </div>`;
+      })
+      .join("");
+  } catch (err) {
+    summaryEl.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`;
+  }
+}
+
 // ---- bootstrap ------------------------------------------------------------
 (async function init() {
   try {
+    refreshSecurityCenter();
     await loadApps();
     await refreshRules();
     await refreshStatus();
     refreshUpdater();
     startEventStream();
-    // Rafraîchit l'état de l'auto-update toutes les 30s (utile pendant que
-    // les listes se téléchargent en arrière-plan au démarrage).
+    // Rafraîchit le centre de sécurité et l'auto-update toutes les 30s.
+    setInterval(refreshSecurityCenter, 30000);
     setInterval(refreshUpdater, 30000);
   } catch (err) {
     document.getElementById("status-text").textContent = "Erreur: " + err.message;

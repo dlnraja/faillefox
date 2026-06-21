@@ -200,3 +200,52 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 28px 60px; }
 .alerts li .cve-link a:hover { text-decoration: underline; }
 .alerts .empty { color: var(--fg-dim); font-style: italic; padding: 12px 0; }
 
+/* Centre de sécurité */
+.sec-score {
+  background: #0a0c10; border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px; text-align: center; margin-bottom: 8px;
+}
+.sec-score .big {
+  font-size: 48px; font-weight: 800; line-height: 1;
+}
+.sec-score .big.good { color: var(--ok); }
+.sec-score .big.mid   { color: var(--warn); }
+.sec-score .big.bad   { color: var(--danger); }
+.sec-score .label { color: var(--fg-dim); font-size: 13px; margin-top: 6px; }
+.sec-score .details { margin-top: 12px; display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.sec-score .details .stat { font-size: 14px; }
+.sec-score .details .stat .n { font-weight: 700; }
+.sec-score .details .stat.active .n   { color: var(--ok); }
+.sec-score .details .stat.inactive .n { color: var(--fg-dim); }
+.sec-score .details .stat.limited .n  { color: var(--warn); }
+
+.sec-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.sec-card {
+  background: var(--bg-card-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 6px;
+  border-left: 3px solid var(--fg-dim);
+  transition: border-color .15s;
+}
+.sec-card.active  { border-left-color: var(--ok); }
+.sec-card.inactive { border-left-color: var(--fg-dim); opacity: 0.7; }
+.sec-card.limited { border-left-color: var(--warn); }
+.sec-card.error   { border-left-color: var(--danger); }
+.sec-card .head { display: flex; align-items: center; gap: 8px; }
+.sec-card .head .icon { font-size: 22px; }
+.sec-card .head .name { font-weight: 600; font-size: 14px; }
+.sec-card .head .pill {
+  margin-left: auto; padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+}
+.sec-card .head .pill.active   { background: rgba(46,204,113,.18); color: var(--ok); }
+.sec-card .head .pill.inactive { background: rgba(154,163,178,.15); color: var(--fg-dim); }
+.sec-card .head .pill.limited  { background: rgba(241,196,15,.18); color: var(--warn); }
+.sec-card .head .pill.error    { background: rgba(231,76,60,.18); color: var(--danger); }
+.sec-card .desc { color: var(--fg-dim); font-size: 12px; line-height: 1.5; }
+.sec-card .cat { color: var(--accent-2); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.sec-card .stats { font-size: 11px; color: var(--fg); margin-top: 4px; }
+
+

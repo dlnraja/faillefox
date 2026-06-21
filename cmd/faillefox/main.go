@@ -36,6 +36,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/gamification"
 	"github.com/dlnraja/faillefox/internal/logging"
 	"github.com/dlnraja/faillefox/internal/platform/winsvc"
+	"github.com/dlnraja/faillefox/internal/securitycenter"
 	"github.com/dlnraja/faillefox/internal/threatintel"
 	"github.com/dlnraja/faillefox/internal/updater"
 	"github.com/dlnraja/faillefox/internal/yarascan"
@@ -296,6 +297,55 @@ func main() {
 	server.SetUpdater(upd)
 	server.SetFeed(feed)
 	server.SetScanner(av)
+
+	// 9b. Centre de sécurité v0.9 : vue unifiée de toutes les protections.
+	//     On déclare le statut de chaque couche selon ce qui est actif.
+	secCenter := securitycenter.New()
+	secCenter.SetStatus(securitycenter.ProtFirewall, securitycenter.StatusActive)
+	switch driver.Name() {
+	case "stub":
+		secCenter.SetStatus(securitycenter.ProtFirewall, securitycenter.StatusLimited)
+	}
+	if dnsShield != nil {
+		secCenter.SetStatus(securitycenter.ProtDNS, securitycenter.StatusActive)
+		// Le DNS sinkhole active toutes les sous-catégories (pubs/trackers/malware...).
+		for _, p := range []securitycenter.Protection{
+			securitycenter.ProtAntiAds, securitycenter.ProtAntiTrackers,
+			securitycenter.ProtAntiMalware, securitycenter.ProtAntiAdware,
+			securitycenter.ProtAntiPhishing,
+		} {
+			secCenter.SetStatus(p, securitycenter.StatusActive)
+		}
+		secCenter.SetStats(securitycenter.ProtDNS, map[string]int{
+			"domaines_bloques": bl.Size(),
+		})
+	}
+	if av != nil {
+		status := securitycenter.StatusActive
+		if !av.IsAvailable() {
+			status = securitycenter.StatusInactive
+		}
+		secCenter.SetStatus(securitycenter.ProtAVScanner, status)
+	}
+	if yaraScanner != nil && yaraScanner.IsAvailable() {
+		secCenter.SetStatus(securitycenter.ProtYARAScanner, securitycenter.StatusActive)
+	}
+	if feed != nil {
+		secCenter.SetStatus(securitycenter.ProtCVEFeed, securitycenter.StatusActive)
+	}
+	if aggregator != nil {
+		secCenter.SetStatus(securitycenter.ProtThreatIntel, securitycenter.StatusActive)
+	}
+	if upd != nil {
+		secCenter.SetStatus(securitycenter.ProtAutoUpdate, securitycenter.StatusActive)
+	}
+	if *freshclamOn {
+		secCenter.SetStatus(securitycenter.ProtFreshclam, securitycenter.StatusActive)
+	}
+	server.SetSecurityCenter(secCenter)
+	summary := secCenter.GetSummary()
+	log.Printf("[main] centre de sécurité: %d/%d protections actives (score %d%%)",
+		summary.Active, summary.Total, summary.Score)
 
 	// 10. Mode service Windows : si on a été lancé par le SCM, on entre en
 	//     mode service. Tout le pipeline ci-dessus est initialisé ; on délègue
