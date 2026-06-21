@@ -1,0 +1,14 @@
+# Configuration du sélecteur de modèles d'issues.
+# Affiche une page d'accueil avec un choix de template quand on ouvre une
+# nouvelle issue.
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Signaler une vulnérabilité SENSIBLE en privé
+    url: https://github.com/dlnraja/faillefox/security/advisories/new
+    about: Pour les failles qui ne doivent pas être publiques avant correctif — NE PAS ouvrir une issue publique.
+  - name: 💬 Question / discussion générale
+    url: https://github.com/dlnraja/faillefox/discussions
+    about: Pour les questions d'usage, idées, ou discussions avant de formaliser une issue.
+  - name: 📖 Documentation
+    url: https://github.com/dlnraja/faillefox#-documentation
+    about: README, guide Android, guide antivirus, guide ClamAV, ROADMAP.

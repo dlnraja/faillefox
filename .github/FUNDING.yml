@@ -1,0 +1,8 @@
+# Configuration de financement (GitHub Sponsors / bouton Sponsor).
+# Faillefox est un projet libre et gratuit : aucun financement n'est attendu
+# par défaut. Cette config permet simplement d'afficher le bouton "Sponsor"
+# si l'utilisateur souhaite soutenir le développement.
+#
+# Pour désactiver l'affichage du bouton, supprimer ce fichier.
+github: [dlnraja]
+custom: ["https://github.com/sponsors/dlnraja"]

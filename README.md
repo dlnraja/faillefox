@@ -16,7 +16,9 @@
 
 📖 **Documentation** : [Présentation](docs/presentation.md) · [Architecture](docs/design.md) ·
 [Android](docs/android.md) · [Antivirus & signature](docs/antivirus.md) ·
-[Feuille de route](ROADMAP.md)
+[ClamAV](docs/clamav.md) · [Feuille de route](ROADMAP.md) ·
+[Changelog](CHANGELOG.md) · [Sécurité](SECURITY.md) · [Contribuer](CONTRIBUTING.md) ·
+[Code de conduite](CODE_OF_CONDUCT.md)
 
 ---
 
