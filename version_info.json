@@ -2,14 +2,14 @@
   "FixedInfo": {
     "FileVersion": {
       "Major": 0,
-      "Minor": 8,
-      "Patch": 2,
+      "Minor": 9,
+      "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 0,
-      "Minor": 8,
-      "Patch": 2,
+      "Minor": 9,
+      "Patch": 0,
       "Build": 0
     },
     "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
     "Comments": "Faillefox — un VRAI pare-feu libre et multiplateforme (Windows/Android/Linux). Né en réaction à la parodie faillefox.com (elle-même issue d'une séquence de CNews du 16/06/2026). Code source ouvert, sans télémétrie, sans comportement caché.",
     "CompanyName": "dlnraja",
     "FileDescription": "Faillefox — Pare-feu multiplateforme",
-    "FileVersion": "0.8.2.0",
+    "FileVersion": "0.9.0.0",
     "InternalName": "faillefox",
     "LegalCopyright": "© 2026 dlnraja — GPL-3.0",
     "LegalTrademarks": "",
     "OriginalFilename": "faillefox.exe",
     "PrivateBuild": "",
     "ProductName": "Faillefox",
-    "ProductVersion": "0.8.2.0",
+    "ProductVersion": "0.9.0.0",
     "SpecialBuild": ""
   }
 }
