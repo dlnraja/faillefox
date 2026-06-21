@@ -34,7 +34,9 @@ jobs:
           cache: true
 
       - name: Install goversioninfo (pour VERSIONINFO Windows)
-        run: go install github.com/josephspurrier/goversioninfo@latest
+        # Le binaire est dans le sous-dossier cmd/ (le package racine n'est
+        # pas un main package).
+        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
       - name: Generate Windows VERSIONINFO resource (.syso)
         # goversioninfo produit resource.syso dans cmd/faillefox/.
