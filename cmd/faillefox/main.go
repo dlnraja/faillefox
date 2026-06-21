@@ -118,8 +118,9 @@ func main() {
 	//     démon télécharge les listes (StevenBlack, OISD) au démarrage puis
 	//     rafraîchit toutes les `updateEvery` (6h par défaut). Le fetch est
 	//     non bloquant (goroutine dédiée), le démon répond immédiatement.
+	var upd *updater.Updater
 	if !*noAutoUpdate {
-		upd := updater.New(bl)
+		upd = updater.New(bl)
 		upd.SetUpdateEvery(*updateEvery)
 		go upd.Start(context.Background())
 		log.Printf("[main] auto-update activé: sources publiques DNS, rafraîchi toutes les %s", *updateEvery)
@@ -143,8 +144,9 @@ func main() {
 
 	// 5d. Veille CVE : interroge la base NVD (gratuite, officielle) et alerte
 	//     si un logiciel installé a une vulnérabilité connue.
+	var feed *cvefeed.Feed
 	if *cveEnabled {
-		feed := cvefeed.New()
+		feed = cvefeed.New()
 		go func() {
 			if err := feed.RefreshAll(context.Background()); err != nil {
 				log.Printf("[warn] veille CVE: %v", err)
@@ -200,6 +202,10 @@ func main() {
 
 	// 9. Serveur de contrôle + UI web (loopback).
 	server := api.New(engine, driver, *port)
+	// Branchements optionnels des modules v0.3/v0.4 (nil-safe côté API).
+	server.SetUpdater(upd)
+	server.SetFeed(feed)
+	server.SetScanner(av)
 
 	// 10. Arrêt propre sur Ctrl+C / fermeture.
 	sigCh := make(chan os.Signal, 1)

@@ -161,3 +161,42 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 28px 60px; }
 .footer { text-align: center; padding: 20px; color: var(--fg-dim); font-size: 12px; border-top: 1px solid var(--border); }
 .footer a { color: var(--accent); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
+
+/* Key-value (status blocks) */
+.kv {
+  background: #0a0c10; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px;
+  line-height: 1.8;
+}
+.kv .k { color: var(--fg-dim); }
+.kv .v { color: var(--fg); font-weight: 600; }
+.kv .ok { color: var(--ok); }
+.kv .warn { color: var(--warn); }
+.kv .bad { color: var(--danger); }
+
+/* Alerts (CVE) */
+.alerts { list-style: none; margin: 16px 0 0; padding: 0; }
+.alerts li {
+  background: var(--bg-card-2); border: 1px solid var(--border);
+  border-left: 3px solid var(--danger); border-radius: 6px;
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.alerts li .cve-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  margin-bottom: 6px; flex-wrap: wrap;
+}
+.alerts li .cve-id { font-family: "SFMono-Regular", Consolas, monospace; color: var(--accent-2); font-weight: 600; }
+.alerts li .cve-sev {
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;
+}
+.alerts li .cve-sev.CRITICAL { background: rgba(231,76,60,.25); color: var(--danger); }
+.alerts li .cve-sev.HIGH { background: rgba(241,196,15,.2); color: var(--warn); }
+.alerts li .cve-sev.MEDIUM { background: rgba(255,167,84,.15); color: var(--accent-2); }
+.alerts li .cve-sev.LOW { background: rgba(154,163,178,.15); color: var(--fg-dim); }
+.alerts li .cve-soft { color: var(--fg-dim); font-size: 12px; margin-bottom: 4px; }
+.alerts li .cve-desc { color: var(--fg); font-size: 13px; }
+.alerts li .cve-link { margin-top: 6px; }
+.alerts li .cve-link a { color: var(--accent); font-size: 12px; text-decoration: none; }
+.alerts li .cve-link a:hover { text-decoration: underline; }
+.alerts .empty { color: var(--fg-dim); font-style: italic; padding: 12px 0; }
+

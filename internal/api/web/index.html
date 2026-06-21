@@ -25,6 +25,9 @@
     <button class="tab active" data-tab="simple">Mode simple</button>
     <button class="tab" data-tab="advanced">Mode avancé</button>
     <button class="tab" data-tab="logs">Journal</button>
+    <button class="tab" data-tab="update">Auto-update</button>
+    <button class="tab" data-tab="cve">CVE</button>
+    <button class="tab" data-tab="scan">Scan ClamAV</button>
   </nav>
 
   <main>
@@ -90,6 +93,48 @@
         <h2>Journal en temps réel</h2>
         <p class="hint">Chaque connexion interceptée et chaque décision prise apparaissent ici.</p>
         <div id="logs" class="logs"></div>
+      </div>
+    </section>
+
+    <!-- AUTO-UPDATE : état du rafraîchissement des listes -->
+    <section id="tab-update" class="panel">
+      <div class="card">
+        <h2>Auto-update des listes</h2>
+        <p class="hint">Faillefox télécharge et rafraîchit automatiquement les listes de blocage DNS (StevenBlack, OISD) et la base CVE (NVD).</p>
+        <div id="update-status" class="kv">chargement…</div>
+      </div>
+    </section>
+
+    <!-- CVE : alertes vulnérabilités -->
+    <section id="tab-cve" class="panel">
+      <div class="card">
+        <h2>Veille CVE (base NVD officielle)</h2>
+        <p class="hint">Saisissez des logiciels (nom + version) pour vérifier s'ils ont une vulnérabilité connue dans la base NVD.</p>
+        <form id="cve-form" class="rule-form">
+          <label>Nom
+            <input type="text" name="name" placeholder="ex: curl" required />
+          </label>
+          <label>Version
+            <input type="text" name="version" placeholder="ex: 7.74.0" />
+          </label>
+          <button type="submit" class="primary">Vérifier</button>
+        </form>
+        <ul id="cve-results" class="alerts"></ul>
+      </div>
+    </section>
+
+    <!-- SCAN CLAMAV -->
+    <section id="tab-scan" class="panel">
+      <div class="card">
+        <h2>Scanner ClamAV</h2>
+        <p class="hint">Analysez un fichier à la recherche de malwares connus. ⚠️ ClamAV est limité vs un AV commercial — voir <code>docs/clamav.md</code>.</p>
+        <form id="scan-form" class="rule-form">
+          <label>Chemin du fichier
+            <input type="text" name="path" placeholder="ex: C:\Downloads\suspicious.exe" required />
+          </label>
+          <button type="submit" class="primary">Scanner</button>
+        </form>
+        <div id="scan-result" class="kv"></div>
       </div>
     </section>
   </main>

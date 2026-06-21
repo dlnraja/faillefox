@@ -19,7 +19,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
+	"github.com/dlnraja/faillefox/internal/cvefeed"
+	"github.com/dlnraja/faillefox/internal/updater"
 )
 
 // webFiles embarque toute l'UI (HTML/CSS/JS) dans le binaire final.
@@ -33,7 +36,21 @@ type Server struct {
 	engine  *core.Engine
 	driver  core.Driver
 	httpSrv *http.Server
+
+	// Modules optionnels v0.3/v0.4 — exposés à l'UI si non nil.
+	updater *updater.Updater // nil = auto-update désactivé
+	scanner *clamscan.Scanner // nil = ClamAV désactivé
+	feed    *cvefeed.Feed     // nil = veille CVE désactivée
 }
+
+// SetUpdater branche l'updater pour l'endpoint /api/updater.
+func (s *Server) SetUpdater(u *updater.Updater) { s.updater = u }
+
+// SetScanner branche le scanner ClamAV pour /api/scan.
+func (s *Server) SetScanner(sc *clamscan.Scanner) { s.scanner = sc }
+
+// SetFeed branche le feed CVE pour /api/cve.
+func (s *Server) SetFeed(f *cvefeed.Feed) { s.feed = f }
 
 // New crée un serveur lié à 127.0.0.1:port.
 func New(engine *core.Engine, driver core.Driver, port int) *Server {
@@ -44,8 +61,11 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/rules", s.handleRules)
 	mux.HandleFunc("/api/default", s.handleDefault)
 	mux.HandleFunc("/api/apps", s.handleApps)
-	mux.HandleFunc("/api/events", s.handleEvents) // SSE
-	mux.HandleFunc("/api/decide", s.handleDecide) // réponse manuelle à un "ask"
+	mux.HandleFunc("/api/events", s.handleEvents)   // SSE
+	mux.HandleFunc("/api/decide", s.handleDecide)   // réponse manuelle à un "ask"
+	mux.HandleFunc("/api/updater", s.handleUpdater) // état de l'auto-update
+	mux.HandleFunc("/api/scan", s.handleScan)       // scan ClamAV
+	mux.HandleFunc("/api/cve", s.handleCVE)         // alertes CVE
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
@@ -231,6 +251,68 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
+}
+
+// ---- handlers v0.3/v0.4 ---------------------------------------------------
+
+// handleUpdater expose l'état de l'auto-update (dernier fetch, nb domaines...).
+func (s *Server) handleUpdater(w http.ResponseWriter, r *http.Request) {
+	if s.updater == nil {
+		writeJSON(w, map[string]any{"enabled": false})
+		return
+	}
+	writeJSON(w, map[string]any{
+		"enabled": true,
+		"status":  s.updater.Status(),
+	})
+}
+
+// handleScan déclenche un scan ClamAV sur un fichier fourni en query ?path=.
+// Renvoie le résultat du scan (infecté ?, signature, détail).
+func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
+	if s.scanner == nil {
+		http.Error(w, "scanner ClamAV non configuré (lancez avec -clamav)", http.StatusServiceUnavailable)
+		return
+	}
+	if !s.scanner.IsAvailable() {
+		http.Error(w, "ClamAV non installé (voir docs/clamav.md)", http.StatusServiceUnavailable)
+		return
+	}
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		http.Error(w, "paramètre path requis", http.StatusBadRequest)
+		return
+	}
+	result, err := s.scanner.ScanFile(r.Context(), path)
+	if err != nil {
+		http.Error(w, "scan échoué: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, result)
+}
+
+// handleCVE renvoie les alertes CVE pour les logiciels fournis en POST.
+// Body JSON: {"software": [{"name":"curl","version":"7.74.0"}, ...]}
+// Réponse: liste d'alertes.
+func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
+	if s.feed == nil {
+		writeJSON(w, map[string]any{"enabled": false, "alerts": []any{}})
+		return
+	}
+	if r.Method != http.MethodPost {
+		// GET : on renvoie juste l'état.
+		writeJSON(w, map[string]any{"enabled": true})
+		return
+	}
+	var body struct {
+		Software []cvefeed.Software `json:"software"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "JSON invalide: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	alerts := s.feed.CheckSoftware(body.Software)
+	writeJSON(w, map[string]any{"alerts": alerts})
 }
 
 // ---- helpers --------------------------------------------------------------

@@ -209,13 +209,111 @@ function startEventStream() {
   };
 }
 
+// ---- auto-update : état du rafraîchissement des listes -------------------
+async function refreshUpdater() {
+  const el = document.getElementById("update-status");
+  try {
+    const data = await getJSON("/api/updater");
+    if (!data.enabled) {
+      el.innerHTML = `<span class="warn">Auto-update désactivé</span> — relancez sans <code>-no-autoupdate</code>.`;
+      return;
+    }
+    const s = data.status || {};
+    const last = s.last_fetch && s.last_fetch !== "0001-01-01T00:00:00Z"
+      ? new Date(s.last_fetch).toLocaleString("fr-FR")
+      : "jamais";
+    const errCls = s.last_error ? "bad" : "ok";
+    const errTxt = s.last_error ? esc(s.last_error) : "aucune";
+    el.innerHTML = `
+      <div><span class="k">Statut:</span> <span class="ok">activé</span></div>
+      <div><span class="k">Domaines bloqués:</span> <span class="v">${s.total_domains ?? 0}</span></div>
+      <div><span class="k">Cycles de mise à jour:</span> <span class="v">${s.cycle_count ?? 0}</span></div>
+      <div><span class="k">Dernier fetch:</span> <span class="v">${last}</span></div>
+      <div><span class="k">Prochain dans:</span> <span class="v">${esc(s.update_every || "6h")}</span></div>
+      <div><span class="k">Dernier erreur:</span> <span class="${errCls}">${errTxt}</span></div>`;
+  } catch (err) {
+    el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`;
+  }
+}
+
+// ---- CVE : vérification de vulnérabilités connues ------------------------
+document.getElementById("cve-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = fd.get("name").trim();
+  const version = fd.get("version").trim();
+  if (!name) return;
+  const results = document.getElementById("cve-results");
+  results.innerHTML = `<li class="empty">Recherche en cours…</li>`;
+  try {
+    const resp = await postJSON("/api/cve", {
+      software: [{ name, version }],
+    });
+    const alerts = resp.alerts || [];
+    if (alerts.length === 0) {
+      results.innerHTML = `<li class="empty">✓ Aucune CVE connue pour « ${esc(name)} ${esc(version)} » dans la fenêtre récente NVD.</li>`;
+      return;
+    }
+    results.innerHTML = alerts
+      .map((a) => {
+        const sev = a.Severity || "LOW";
+        return `
+      <li>
+        <div class="cve-head">
+          <span class="cve-id">${esc(a.CVE)}</span>
+          <span class="cve-sev ${sev}">${sev}</span>
+        </div>
+        <div class="cve-soft">${esc(a.Software)}</div>
+        <div class="cve-desc">${esc(a.Description || "")}</div>
+        <div class="cve-link"><a href="${esc(a.URL)}" target="_blank" rel="noopener">Détails NVD →</a></div>
+      </li>`;
+      })
+      .join("");
+  } catch (err) {
+    results.innerHTML = `<li class="empty">Erreur: ${esc(err.message)}</li>`;
+  }
+});
+
+// ---- scan ClamAV ----------------------------------------------------------
+document.getElementById("scan-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const path = fd.get("path").trim();
+  if (!path) return;
+  const el = document.getElementById("scan-result");
+  el.innerHTML = `<span class="k">Scan en cours…</span> <span class="warn">(peut prendre plusieurs secondes)</span>`;
+  try {
+    const resp = await fetch(`${API}/api/scan?path=${encodeURIComponent(path)}`);
+    if (!resp.ok) {
+      const msg = await resp.text();
+      el.innerHTML = `<span class="bad">Échec: ${esc(msg)}</span>`;
+      return;
+    }
+    const r = await resp.json();
+    const cls = r.Infected ? "bad" : "ok";
+    const icon = r.Infected ? "⚠️" : "✓";
+    let html = `<div><span class="${cls}">${icon} ${esc(r.Detail || "Résultat")}</span></div>`;
+    if (r.Signature) {
+      html += `<div><span class="k">Signature:</span> <span class="v">${esc(r.Signature)}</span></div>`;
+    }
+    html += `<div><span class="k">Fichier:</span> <span class="v">${esc(r.Path)}</span></div>`;
+    el.innerHTML = html;
+  } catch (err) {
+    el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`;
+  }
+});
+
 // ---- bootstrap ------------------------------------------------------------
 (async function init() {
   try {
     await loadApps();
     await refreshRules();
     await refreshStatus();
+    refreshUpdater();
     startEventStream();
+    // Rafraîchit l'état de l'auto-update toutes les 30s (utile pendant que
+    // les listes se téléchargent en arrière-plan au démarrage).
+    setInterval(refreshUpdater, 30000);
   } catch (err) {
     document.getElementById("status-text").textContent = "Erreur: " + err.message;
     document.getElementById("status-dot").className = "dot bad";
