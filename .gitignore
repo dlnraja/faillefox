@@ -28,3 +28,8 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# Ressources Windows générées par goversioninfo (régénérées en CI)
+*.syso
+resource.syso
+

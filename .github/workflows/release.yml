@@ -39,20 +39,15 @@ jobs:
         run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
       - name: Generate Windows VERSIONINFO resource (.syso)
-        # goversioninfo produit resource.syso dans cmd/faillefox/.
-        # go build le lie automatiquement pour la cible Windows (convention
-        # Go : tout .syso dans le package main est lié au binaire).
+        # goversioninfo lit le fichier version_info.json (racine du dépôt)
+        # qui contient toutes les métadonnées (Company, Product, Version,
+        # manifeste UAC, etc.) et produit resource.syso dans cmd/faillefox/.
+        # go build lie automatiquement ce .syso au binaire Windows (convention
+        # Go : tout .syso dans le package main est lié).
         run: |
           cd cmd/faillefox
-          $HOME/go/bin/goversioninfo \
-            -skip-versioninfo \
-            -ver-file-major=0 -ver-file-minor=2 -ver-file-patch=0 \
-            -product-version-major=0 -product-version-minor=2 -product-version-patch=0 \
-            -company-name="dlnraja" \
-            -product-name="Faillefox" \
-            -file-description="Faillefox - Pare-feu multiplateforme" \
-            -copyright="(c) 2026 dlnraja - GPL-3.0" \
-            -original-filename="faillefox.exe"
+          $HOME/go/bin/goversioninfo ../../version_info.json
+          ls -la resource.syso
 
       - name: Cross-compile all targets
         # CGO_ENABLED=0 pour des binaires statiques portables.

@@ -21,7 +21,5 @@
     "ProductName": "Faillefox",
     "ProductVersion": "0.2.0.0",
     "SpecialBuild": ""
-  },
-  "IconPath": "assets/faillefox.ico",
-  "ManifestPath": "cmd/faillefox/faillefox.exe.manifest"
+  }
 }
