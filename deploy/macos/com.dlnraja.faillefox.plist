@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dlnraja.faillefox</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/faillefox</string>
+        <string>-dns</string>
+        <string>-cve</string>
+        <string>-data</string>
+        <string>/usr/local/var/faillefox</string>
+    </array>
+
+    <!-- Démarrage automatique au boot (avant login). -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Redémarrage en cas de crash. -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Logging vers /usr/local/var/log/faillefox.log -->
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/faillefox.log</string>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/faillefox.err.log</string>
+</dict>
+</plist>

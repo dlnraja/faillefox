@@ -96,15 +96,19 @@ navigateur, **jamais exposé sur le réseau**.
 > avec Windows Defender** (gratuit, intégré à Windows). Voir
 > [docs/clamav.md](docs/clamav.md) pour le détail des limites ClamAV.
 
-### Plateformes supportées (v0.3)
+### Plateformes supportées (v0.6)
 
-| Plateforme | Pilote | Statut |
-|------------|--------|--------|
-| **Windows** | `windows-netfw` (Pare-feu Windows via `netsh`) | ✅ réel |
-| **Linux** | `linux-nftables` (nftables / iptables) | ✅ réel |
-| **macOS** | `stub` | ⏳ stub (v0.5) |
-| **Android** | `android-vpn` (VPNService + gomobile) | ⏳ scaffold (v0.4) |
-| Toutes | `stub` (simulation) | ✅ démo sans droits admin |
+| Plateforme | Pilote | Service au boot | Statut |
+|------------|--------|------------------|--------|
+| **Windows** | `windows-netfw` (Pare-feu Windows) | ✅ service Windows natif (`-winsvc install`) | ✅ réel |
+| **Linux** | `linux-nftables` (nftables/iptables) | ✅ systemd (`deploy/linux/faillefox.service`) | ✅ réel |
+| **macOS** | `stub` + DNS sinkhole | ✅ launchd (`deploy/macos/...plist`) | ⏳ DNS ok, interception réseau v0.7 |
+| **Android** | `android-vpn` (VpnService + gomobile) | ✅ foreground service | ⏳ tun + tunnel handler (v0.7) |
+| Toutes | `stub` (simulation) | — | ✅ démo sans droits admin |
+
+Guides d'installation détaillés par plateforme :
+[Windows](deploy/windows/README.md) · [Linux](deploy/linux/README.md) ·
+[macOS](deploy/macos/README.md) · [Android](docs/android.md)
 
 ---
 

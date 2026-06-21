@@ -33,6 +33,7 @@ import (
 	_ "github.com/dlnraja/faillefox/internal/drivers/stub"     // registre stub (défaut)
 	"github.com/dlnraja/faillefox/internal/freshclam"
 	"github.com/dlnraja/faillefox/internal/logging"
+	"github.com/dlnraja/faillefox/internal/platform/winsvc"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
 
@@ -58,8 +59,41 @@ func main() {
 		noAutoUpdate = flag.Bool("no-autoupdate", false, "désactive l'auto-update des listes DNS/CVE (activé par défaut)")
 		updateEvery  = flag.Duration("update-every", 6*time.Hour, "intervalle entre deux mises à jour (défaut 6h)")
 		freshclamOn  = flag.Bool("freshclam", false, "active la mise à jour auto des signatures ClamAV (2h)")
+
+		// --- v0.6 : intégration plateforme (service Windows natif) ---
+		winsvcCmd = flag.String("winsvc", "", "gestion du service Windows: install|uninstall|start|stop|run")
 	)
 	flag.Parse()
+
+	// Gestion du service Windows : -winsvc install|uninstall|start|stop.
+	// Bifurcation avant toute autre init.
+	switch *winsvcCmd {
+	case "install":
+		exe, _ := os.Executable()
+		if err := winsvc.Install(exe); err != nil {
+			log.Fatalf("[fatal] install service: %v", err)
+		}
+		return
+	case "uninstall":
+		if err := winsvc.Uninstall(); err != nil {
+			log.Fatalf("[fatal] uninstall service: %v", err)
+		}
+		return
+	case "start":
+		if err := winsvc.Start(); err != nil {
+			log.Fatalf("[fatal] start service: %v", err)
+		}
+		return
+	case "stop":
+		if err := winsvc.Stop(); err != nil {
+			log.Fatalf("[fatal] stop service: %v", err)
+		}
+		return
+	case "":
+		// pas de gestion de service : on continue le démarrage normal
+	default:
+		log.Fatalf("[fatal] -winsvc valeur inconnue: %s (install|uninstall|start|stop|run)", *winsvcCmd)
+	}
 
 	if *listOnly {
 		fmt.Println("Pilotes disponibles dans ce binaire:")
@@ -207,7 +241,21 @@ func main() {
 	server.SetFeed(feed)
 	server.SetScanner(av)
 
-	// 10. Arrêt propre sur Ctrl+C / fermeture.
+	// 10. Mode service Windows : si on a été lancé par le SCM, on entre en
+	//     mode service. Tout le pipeline ci-dessus est initialisé ; on délègue
+	//     maintenant à winsvc.Run qui bloquera jusqu'à l'arrêt demandé par le
+	//     SCM. Hors Windows ou en exécution normale, on reste en mode console.
+	if winsvc.IsWindowsService() {
+		log.Printf("[main] démarrage en mode service Windows (SCM)")
+		if err := winsvc.Run(func() error {
+			return runServer(ctx, server, driver, cancel)
+		}); err != nil {
+			log.Fatalf("[fatal] service Windows: %v", err)
+		}
+		return
+	}
+
+	// 11. Arrêt propre sur Ctrl+C / fermeture (mode console).
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -219,9 +267,16 @@ func main() {
 	}()
 
 	log.Printf("Pare-feu Faillefox prêt. Panneau: http://127.0.0.1:%d", *port)
-	if err := server.ListenAndServe(); err != nil {
+	if err := runServer(ctx, server, driver, cancel); err != nil {
 		log.Fatalf("[fatal] serveur: %v", err)
 	}
+}
+
+// runServer lance le serveur HTTP du panneau (loopback). Factorisé pour être
+// réutilisé à la fois par le mode console et le mode service Windows.
+func runServer(ctx context.Context, server *api.Server, driver core.Driver, cancel context.CancelFunc) error {
+	defer cancel()
+	return server.ListenAndServe()
 }
 
 // defaultDriver renvoie le pilote par défaut selon l'OS :

@@ -1,0 +1,31 @@
+[Unit]
+Description=Faillefox - pare-feu libre et multiplateforme
+Documentation=https://github.com/dlnraja/faillefox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Le binaire est installé dans /usr/bin par le paquet .deb.
+ExecStart=/usr/bin/faillefox -driver linux-nftables -dns -cve -data /var/lib/faillefox
+Restart=on-failure
+RestartSec=5
+
+# Faillefox doit pouvoir modifier nftables -> CAP_NET_ADMIN.
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+
+# Durcissement : pas d'accès au home, lecture seule de /usr.
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/faillefox
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging vers journald.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=faillefox
+
+[Install]
+WantedBy=multi-user.target

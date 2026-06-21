@@ -25,10 +25,15 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import com.dlnraja.faillefox.R
 import com.dlnraja.faillefox.ui.MainActivity
+// EngineWrapper est généré par gomobile bind (package racine Kotlin).
+import faillefox.EngineWrapper
 
 class FaillefoxVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
+    private var tunnel: TunnelHandler? = null
+    // Moteur Go (gomobile) partagé pour les décisions de filtrage.
+    private val engine = EngineWrapper()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, buildNotification())
@@ -52,6 +57,12 @@ class FaillefoxVpnService : VpnService() {
         // Sur Android 13+, VpnService.Builder expose une API pour identifier
         // les paquets par UID. C'est elle qu'on utilise pour le filtrage par app.
         vpnInterface = builder.establish()
+
+        // Démarrage de la boucle de forward : chaque paquet est soumis au
+        // moteur Go pour décision (allow/deny/ask), puis forwardé ou droppé.
+        vpnInterface?.let { fd ->
+            tunnel = TunnelHandler(this, engine).also { it.start(fd) }
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -74,10 +85,19 @@ class FaillefoxVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        tunnel?.stop()
+        tunnel = null
         vpnInterface?.close()
         vpnInterface = null
         super.onDestroy()
     }
+
+    // Companion object : IDs de notification/canal.
+    companion object {
+        private const val CHANNEL_ID = "faillefox-vpn"
+        private const val NOTIF_ID = 1
+    }
+}
 
     companion object {
         private const val CHANNEL_ID = "faillefox-vpn"
