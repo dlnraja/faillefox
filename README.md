@@ -84,6 +84,14 @@ Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
   automatiquement sur les réseaux publics.
 - 📜 **Journal temps réel** — chaque décision est affichée en direct (SSE)
   **et** persistée sur disque (rotation automatique).
+- 🔍 **Threat intelligence** (v0.7) — agrège les IOC publics (Abuse.ch
+  ThreatFox/URLhaus, AlienVault OTX) et les **croise** pour prioriser les
+  alertes. Voir [docs/threat-intel.md](docs/threat-intel.md).
+- 🧬 **Scanner YARA** (v0.7) — charge des règles YARA **publiques** (YARA
+  Forge, signature-base) et scanne les fichiers. On NE génère pas de règles
+  maison (dangereux — faux positifs).
+- 🎮 **Gamification** (v0.7) — points, badges, streak de jours protégés pour
+  encourager la consultation régulière. Activée par défaut.
 
 Le tout pilotable depuis un **panneau web local** ouvert dans votre
 navigateur, **jamais exposé sur le réseau**.

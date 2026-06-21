@@ -26,15 +26,19 @@ import (
 	"github.com/dlnraja/faillefox/internal/api"
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
+	"github.com/dlnraja/faillefox/internal/correlate"
 	"github.com/dlnraja/faillefox/internal/cvefeed"
 	"github.com/dlnraja/faillefox/internal/dnsshield"
 	_ "github.com/dlnraja/faillefox/internal/drivers/netfw"    // registre windows-netfw
 	_ "github.com/dlnraja/faillefox/internal/drivers/nftables" // registre linux-nftables
 	_ "github.com/dlnraja/faillefox/internal/drivers/stub"     // registre stub (défaut)
 	"github.com/dlnraja/faillefox/internal/freshclam"
+	"github.com/dlnraja/faillefox/internal/gamification"
 	"github.com/dlnraja/faillefox/internal/logging"
 	"github.com/dlnraja/faillefox/internal/platform/winsvc"
+	"github.com/dlnraja/faillefox/internal/threatintel"
 	"github.com/dlnraja/faillefox/internal/updater"
+	"github.com/dlnraja/faillefox/internal/yarascan"
 )
 
 func main() {
@@ -62,6 +66,11 @@ func main() {
 
 		// --- v0.6 : intégration plateforme (service Windows natif) ---
 		winsvcCmd = flag.String("winsvc", "", "gestion du service Windows: install|uninstall|start|stop|run")
+
+		// --- v0.7 : threat intel + corrélation + YARA + gamification ---
+		threatIntelOn = flag.Bool("threat-intel", false, "agrège les IOC publics (Abuse.ch, OTX, MISP) et les croise")
+		yaraRulesArg  = flag.String("yara-rules", "", "fichier de règles YARA publiques à charger (scan simplifié)")
+		gameOn        = flag.Bool("gamification", true, "active la gamification (points, badges, streak) — activé par défaut")
 	)
 	flag.Parse()
 
@@ -208,6 +217,53 @@ func main() {
 		} else {
 			log.Printf("[warn] -freshclam: freshclam non trouvé (installez ClamAV)")
 		}
+	}
+
+	// 5g. Threat intelligence : agrège les IOC publics (Abuse.ch, OTX, MISP)
+	//     en arrière-plan, pour que le corrélateur puisse les croiser.
+	var aggregator *threatintel.Aggregator
+	var correlator *correlate.Correlator
+	if *threatIntelOn {
+		aggregator = threatintel.New()
+		go func() {
+			if n, err := aggregator.FetchAll(context.Background()); err != nil {
+				log.Printf("[warn] threat intel: %v", err)
+			} else {
+				log.Printf("[main] threat intel: %d IOC agrégés", n)
+			}
+		}()
+		correlator = correlate.New(aggregator)
+		correlator.SetProfile(p)
+		log.Printf("[main] threat intel activé (Abuse.ch + AlienVault OTX, fetch auto)")
+	}
+
+	// 5h. Scanner YARA : charge des règles publiques (chargement uniquement,
+	//     on NE GÉNÈRE PAS de règles maison). Optionnel.
+	var yaraScanner *yarascan.Scanner
+	if *yaraRulesArg != "" {
+		yaraScanner = yarascan.New()
+		if n, err := yaraScanner.LoadRules(*yaraRulesArg); err != nil {
+			log.Printf("[warn] YARA rules: %v", err)
+		} else {
+			log.Printf("[main] scanner YARA activé: %d règle(s) chargée(s) depuis %s", n, *yaraRulesArg)
+		}
+	}
+
+	// 5i. Gamification : points, badges, streak — encourage la consultation
+	//     régulière du panneau. Activée par défaut.
+	var game *gamification.State
+	if *gameOn {
+		gamePath := filepath.Join(*dataDir, "gamification.json")
+		game, _ = gamification.New(gamePath)
+		newBadges := game.Record(gamification.ActionVisit)
+		if err := game.Save(); err != nil {
+			log.Printf("[warn] gamification: %v", err)
+		}
+		if len(newBadges) > 0 {
+			log.Printf("[main] gamification: nouveaux badges: %v", newBadges)
+		}
+		log.Printf("[main] gamification activée: niveau %d, %d points, streak %d j",
+			game.Level(), game.Points, game.Streak)
 	}
 
 	// 6. Driver natif.
