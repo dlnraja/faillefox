@@ -70,7 +70,7 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 
 [Run]
 ; Lance Faillefox à la fin de l'installation (case à cocher par défaut).
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsuits
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 ; Installe le service Windows si la tâche est cochée.
 Filename: "{app}\{#MyAppExeName}"; Parameters: "-winsvc install"; Flags: runhidden; Tasks: service
 Filename: "{app}\{#MyAppExeName}"; Parameters: "-winsvc start"; Flags: runhidden; Tasks: service
