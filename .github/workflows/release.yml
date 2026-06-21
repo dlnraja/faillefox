@@ -16,7 +16,9 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      # Matche les tags manuels (v0.4.0) ET les auto-releases hebdo
+      # (v0.2026.25.1 — 4 composantes).
+      - "v*"
 
 permissions:
   contents: write # nécessaire pour créer la release et uploader les assets
