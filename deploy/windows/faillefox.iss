@@ -33,8 +33,12 @@ AppUpdatesURL={#MyAppURL}/releases
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+; SourceDir = racine du dépôt (les fichiers faillefox.exe, LICENSE, README.md
+; y sont produits par le build Go avant l'appel à iscc).
+SourceDir=..\..
 LicenseFile=LICENSE
-OutputDir=Output
+; OutputDir est relatif au répertoire du .iss (deploy/windows/Output).
+OutputDir=deploy\windows\Output
 OutputBaseFilename=faillefox-setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes

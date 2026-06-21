@@ -15,7 +15,9 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
-VERSION="${1:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0)}"
+# Le tag passé peut être 'v0.8.0' (inputs.tag) — on normalise en '0.8.0'.
+RAW_VERSION="${1:-$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)}"
+VERSION="${RAW_VERSION#v}"
 BUILD_DIR="$(mktemp -d)"
 PKG="faillefox_${VERSION}_amd64"
 DEST="${BUILD_DIR}/${PKG}"
