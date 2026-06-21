@@ -19,13 +19,21 @@ on:
       # Matche les tags manuels (v0.4.0) ET les auto-releases hebdo
       # (v0.2026.25.1 — 4 composantes).
       - "v*"
-  # Permet au workflow weekly-release de l'invoquer directement (évite la
-  # limitation GitHub : un push de tag fait par github-actions[bot] ne
+  # Permet au workflow weekly-release et auto-version de l'invoquer directement
+  # (évite la limitation GitHub : un push de tag fait par github-actions[bot] ne
   # déclenche PAS d'autres workflows).
   workflow_call:
     inputs:
       tag:
         description: "Tag de version à créer"
+        required: true
+        type: string
+  # Permet aussi un déclenchement manuel depuis l'onglet Actions (ex: pour
+  # rattraper une release manquée par la limite anti-boucle).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag existant à builder/publier (ex: v0.6.0)"
         required: true
         type: string
 

@@ -29,6 +29,9 @@ jobs:
     if: >-
       !contains(github.event.head_commit.message, '[skip release]') &&
       github.actor != 'github-actions[bot]'
+    outputs:
+      new_tag: ${{ steps.bump.outputs.new_tag }}
+      skip: ${{ steps.bump.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -142,7 +145,7 @@ jobs:
           git commit -m "chore(release): ${{ steps.bump.outputs.new_tag }} [skip release]" || echo "Rien à committer"
           git push origin master
 
-      - name: Create & push tag (déclenche release.yml)
+      - name: Create & push tag
         if: steps.bump.outputs.skip != 'true'
         run: |
           NEW="${{ steps.bump.outputs.new_tag }}"
@@ -150,3 +153,16 @@ jobs:
           Généré par .github/workflows/auto-version.yml depuis les conventional commits."
           git tag -a "$NEW" -m "$NOTES"
           git push origin "$NEW"
+
+  # Étape 2 : invoque release.yml directement (le push du tag par le bot ne
+  # déclenche PAS de workflow — limite anti-boucle GitHub).
+  release:
+    name: Trigger release
+    needs: bump
+    if: needs.bump.outputs.skip != 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.bump.outputs.new_tag }}
+    permissions:
+      contents: write
+
