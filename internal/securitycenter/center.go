@@ -66,6 +66,9 @@ type Center struct {
 func New() *Center {
 	c := &Center{states: make(map[Protection]*ProtectionState)}
 	for _, p := range allProtections() {
+		// Statut par défaut explicite : sans ça, le champ Status vaut ""
+		// (chaîne vide), qui n'est ni active ni inactive.
+		p.Status = StatusInactive
 		c.states[p.ID] = &p
 	}
 	return c
