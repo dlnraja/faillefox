@@ -1,0 +1,35 @@
+# Dependabot : met à jour automatiquement les dépendances Go et les
+# GitHub Actions utilisées dans les workflows.
+#
+# - Pour Go : ouvre une PR quand miekg/dns (ou autre) sort une nouvelle
+#   version. Les tests CI valident la PR avant merge.
+# - Pour les Actions : garde actions/checkout, setup-go, etc. à jour.
+version: 2
+updates:
+  # Dépendances Go (go.mod)
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "deps"
+    # On ne pin pas les versions mineures : Dependabot propose les mineures
+    # et patch, mais PAS les majeures (à valider manuellement).
+
+  # GitHub Actions des workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"

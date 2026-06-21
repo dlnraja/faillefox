@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dlnraja/faillefox/internal/core"
@@ -31,6 +32,13 @@ type Updater struct {
 	cveSource   string   // URL du flux NVD CVE
 	httpClient  *http.Client
 	updateEvery time.Duration
+
+	// État observable (pour l'UI / l'API /api/status).
+	mu           sync.RWMutex
+	lastFetch    time.Time
+	lastError    string
+	totalDomains int
+	cycleCount   int
 }
 
 // New crée un updater avec les sources publiques par défaut.
@@ -47,7 +55,31 @@ func New(blocklist *core.Blocklist) *Updater {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		updateEvery: 24 * time.Hour,
+		// 6h par défaut : équilibre entre fraîcheur et charge des sources
+		// publiques (StevenBlack se met à jour plusieurs fois par jour).
+		updateEvery: 6 * time.Hour,
+	}
+}
+
+// Status expose l'état de l'updater (pour l'API/UI).
+type Status struct {
+	LastFetch    time.Time `json:"last_fetch"`
+	LastError    string    `json:"last_error,omitempty"`
+	TotalDomains int       `json:"total_domains"`
+	CycleCount   int       `json:"cycle_count"`
+	UpdateEvery  string    `json:"update_every"`
+}
+
+// Status renvoie l'état courant (thread-safe).
+func (u *Updater) Status() Status {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+	return Status{
+		LastFetch:    u.lastFetch,
+		LastError:    u.lastError,
+		TotalDomains: u.totalDomains,
+		CycleCount:   u.cycleCount,
+		UpdateEvery:  u.updateEvery.String(),
 	}
 }
 
@@ -55,20 +87,40 @@ func New(blocklist *core.Blocklist) *Updater {
 // Renvoie le nombre total de domaines ajoutés.
 func (u *Updater) FetchOnce(ctx context.Context) (int, error) {
 	total := 0
+	var firstErr error
 	for _, url := range u.dnsSources {
 		n, err := u.fetchHosts(ctx, url)
 		if err != nil {
 			log.Printf("[updater] %s: %v (ignoré)", url, err)
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		log.Printf("[updater] %s: %d domaines", shortURL(url), n)
 		total += n
 	}
-	return total, nil
+
+	u.mu.Lock()
+	u.lastFetch = time.Now()
+	u.totalDomains = u.blocklist.Size()
+	u.cycleCount++
+	if firstErr != nil {
+		u.lastError = firstErr.Error()
+	} else {
+		u.lastError = ""
+	}
+	u.mu.Unlock()
+
+	return total, firstErr
 }
 
-// Start lance la boucle périodique (FetchOnce puis toutes les 24h).
-// Bloquant ; à lancer dans une goroutine.
+// Start lance la boucle périodique (FetchOnce au démarrage puis toutes les
+// updateEvery). Bloquant ; à lancer dans une goroutine.
+//
+// Le fetch initial est NON bloquant pour le démarrage du démon : on lance
+// Start dans une goroutine dédiée, le démon répond immédiatement, et les
+// listes se remplissent en arrière-plan.
 func (u *Updater) Start(ctx context.Context) {
 	if _, err := u.FetchOnce(ctx); err != nil {
 		log.Printf("[updater] premier fetch: %v", err)

@@ -43,7 +43,27 @@ un complément qui s'ajoute à Windows Defender ou un AV commercial.
 - [x] Dépendance `miekg/dns` (librairie Go de référence pour DNS)
 - [x] ~17 nouveaux tests (DNS sinkhole, CVE feed, ClamAV parser, updater)
 
-## 🔜 v0.4 — Android complet + UI de scan
+## ✅ v0.4 — Automatisation autonome (publiée le 21/06/2026)
+
+Faillefox tourne désormais « tout seul » : listes toujours à jour, releases
+automatiques, dépendances suivies. Plus besoin d'intervention manuelle.
+
+- [x] **Auto-update par défaut** : listes DNS (StevenBlack, OISD) + base CVE
+      téléchargées au démarrage, puis rafraîchies toutes les **6h** en
+      arrière-plan. `-no-autoupdate` pour désactiver, `-update-every` pour
+      l'intervalle.
+- [x] **Signatures ClamAV auto** : intégration de `freshclam` (option
+      `-freshclam`) qui met à jour les signatures toutes les **2h**.
+- [x] **Workflow auto-release hebdo** : un tag auto-daté est créé chaque
+      lundi à 04:00 UTC, déclenchant le pipeline release multi-OS. Les
+      utilisateurs ont toujours une version récente sans action.
+- [x] **Dependabot** : PR automatiques pour mettre à jour les dépendances
+      Go (`miekg/dns`) et les GitHub Actions utilisées.
+- [x] **Observabilité** : `updater.Status()` expose dernier fetch, nombre
+      de domaines, cycle, erreur éventuelle (pour l'API/UI).
+- [x] Tests nouveaux (freshclam, updater.Status).
+
+## 🔜 v0.5 — Android complet + UI de scan
 
 - [ ] Forward des paquets via tun2socks (interception réelle sur Android)
 - [ ] Filtrage par UID (par app Android)
@@ -52,7 +72,7 @@ un complément qui s'ajoute à Windows Defender ou un AV commercial.
 - [ ] Notifications système pour le mode `ask` et les CVE
 - [ ] Publication sur F-Droid (apks signés reproductiblement)
 
-## 🔜 v0.5 — Pilote WFP avancé + filtrage strict par app
+## 🔜 v0.6 — Pilote WFP avancé + filtrage strict par app
 
 Objectif : filtrage par application **strict** et en temps réel sur Windows,
 via WFP (Windows Filtering Platform).
@@ -64,7 +84,7 @@ via WFP (Windows Filtering Platform).
 - [ ] Pilote Linux : association paquet→PID via NFQUEUE + `/proc/net`
 - [ ] Tests d'intégration par plateforme
 
-## 🔜 v0.5 — Fonctionnalités avancées
+## 🔜 v0.7 — Fonctionnalités avancées
 
 - [ ] Règles par géolocalisation IP (bloquer un pays)
 - [ ] Listes de blocage communautaires (StevenBlack, EasyList…)

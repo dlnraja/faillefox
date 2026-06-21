@@ -1,0 +1,71 @@
+# Auto-release hebdomadaire : crée automatiquement un tag de version daté
+# chaque lundi, ce qui déclenche le workflow release.yml qui produit les
+# binaires multi-OS et la GitHub Release.
+#
+# But : même sans intervention manuelle, les utilisateurs ont toujours accès
+# à une version récente intégrant les derniers commits (blocklists mises à
+# jour, CVE, corrections, etc.).
+#
+# Les tags générés suivent le format v0.<semaine>.<jour> (ex: v0.2026.25.1
+# pour le 1er commit auto de la semaine 25 de 2026).
+name: Weekly auto-release
+
+on:
+  schedule:
+    # Chaque lundi à 04:00 UTC (évite les heures de pointe des runners GH).
+    - cron: "0 4 * * 1"
+  workflow_dispatch: # permet aussi de le déclencher à la main
+
+permissions:
+  contents: write # nécessaire pour pousser un tag
+
+jobs:
+  autotag:
+    name: Create weekly tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if no new commits since last tag
+        id: check
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git rev-list --count "${LAST_TAG}..HEAD")
+            if [ "$COMMITS" = "0" ]; then
+              echo "Aucun commit depuis $LAST_TAG, on annule."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Generate weekly version tag
+        if: steps.check.outputs.skip != 'true'
+        id: ver
+        run: |
+          YEAR=$(date -u +%Y)
+          WEEK=$(date -u +%V) # numéro de semaine ISO
+          # Auto-increment si plusieurs auto-releases dans la même semaine.
+          SEQ=1
+          TAG="v0.${YEAR}.${WEEK}.${SEQ}"
+          while git rev-parse "$TAG" >/dev/null 2>&1; do
+            SEQ=$((SEQ + 1))
+            TAG="v0.${YEAR}.${WEEK}.${SEQ}"
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Tag généré: $TAG"
+
+      - name: Push tag (déclenche release.yml)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.ver.outputs.tag }}" \
+            -m "Auto-release hebdomadaire ${{ steps.ver.outputs.tag }}
+
+Généré automatiquement par .github/workflows/weekly-release.yml.
+Déclenche le workflow release.yml qui produit les binaires multi-OS."
+          git push origin "${{ steps.ver.outputs.tag }}"

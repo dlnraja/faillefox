@@ -65,13 +65,15 @@ Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
 - 🚫 **DNS sinkhole** (façon Pi-hole local) — un résolveur DNS qui bloque
   pubs, trackers et domaines malveillants **pour toutes les apps** de la
   machine. Sources : StevenBlack, OISD, Abuse.ch (auto-mises-à-jour).
-- 🔄 **Auto-update des listes** — téléchargement et rafraîchissement
-  périodique des blocklists DNS (sources publiques).
+- 🔄 **Auto-update autonome** — télécharge les listes au démarrage puis les
+  rafraîchit toutes les **6h en arrière-plan** (activé par défaut). Plus
+  rien à gérer manuellement.
 - 🛡️ **Veille CVE** — interroge la base **NVD officielle** (gratuite,
   publique) et alerte si un logiciel installé a une vulnérabilité connue.
 - 🦠 **Scanner ClamAV** — seul moteur antivirus open source, intégré pour
   le scan à la demande. ⚠️ Limité vs solutions commerciales — voir
-  [docs/clamav.md](docs/clamav.md).
+  [docs/clamav.md](docs/clamav.md). Mises à jour des signatures via
+  `freshclam` intégrées (option `-freshclam`).
 - 🏠 **Profils réseau** (Maison / Bureau / Public) — blocage plus strict
   automatiquement sur les réseaux publics.
 - 📜 **Journal temps réel** — chaque décision est affichée en direct (SSE)
@@ -132,12 +134,16 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 -profile string     profil réseau: home | office | public (défaut home)
 -blocklist string   fichier hosts à charger comme liste anti-trackers
 
-# v0.3 — bouclier réseau/DNS + CVE + ClamAV
+# Bouclier réseau/DNS + CVE + ClamAV (v0.3)
 -dns                active le résolveur DNS sinkhole (bloque pubs/trackers/malwares)
 -dns-port int       port du résolveur DNS local (loopback, défaut 5353)
--auto-update        rafraîchit automatiquement les listes DNS + CVE (24h)
 -cve                active la veille CVE (base NVD officielle gratuite)
 -clamav             active le scanner ClamAV (nécessite ClamAV installé)
+
+# Automatisation autonome (v0.4) — activées par défaut
+-no-autoupdate      désactive l'auto-update des listes DNS/CVE (activé par défaut)
+-update-every dur   intervalle entre deux mises à jour (défaut 6h)
+-freshclam          active la mise à jour auto des signatures ClamAV (2h)
 
 -no-persistent-log  désactive le journal persistant sur disque
 -list-drivers       affiche les pilotes compilés et quitte
@@ -146,20 +152,23 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 ### Exemples
 
 ```bash
-# Démarrage normal (pilote auto selon l'OS)
+# Démarrage normal : auto-update activé par défaut (listes DNS + CVE toutes les 6h)
 ./faillefox
 
-# Profil public + blocklist anti-pubs
+# Profil public + blocklist anti-pubs locale
 ./faillefox -profile public -blocklist blocklist.txt
 
-# TOUT activer : pare-feu + DNS sinkhole + auto-update + CVE + ClamAV
-./faillefox -dns -auto-update -cve -clamav
+# TOUT activer : pare-feu + DNS sinkhole + CVE + ClamAV + signatures auto
+./faillefox -dns -cve -clamav -freshclam
+
+# Désactiver l'auto-update (mode hors-ligne / listes locales uniquement)
+./faillefox -no-autoupdate
 
 # Windows : pilote Pare-feu Windows (nécessite droits admin pour netsh)
 ./faillefox.exe -driver windows-netfw
 
 # Linux : pilote nftables (nécessite root)
-sudo ./faillefox -driver linux-nftables -dns -auto-update -cve
+sudo ./faillefox -driver linux-nftables -dns -cve
 ```
 
 ### Activer le blocage DNS au niveau système
@@ -281,7 +290,7 @@ Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
 - Scaffold Android complet (VpnService + Kotlin + gomobile)
 - Workflow SignPath + guide antivirus
 
-### ✅ v0.3 — DNS sinkhole + CVE + ClamAV (actuelle)
+### ✅ v0.3 — DNS sinkhole + CVE + ClamAV
 - **DNS sinkhole** : résolveur local qui bloque pubs/trackers/malwares pour
   tout le système (façon Pi-hole)
 - **Auto-update** des listes DNS (StevenBlack, OISD, Abuse.ch)
@@ -290,11 +299,22 @@ Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
 - **Scanner ClamAV** : intégration du seul moteur AV open source (limité vs
   solutions commerciales — voir [docs/clamav.md](docs/clamav.md))
 
-### 🔜 v0.4 — Android complet + UI de scan
+### ✅ v0.4 — Automatisation autonome (actuelle)
+- **Auto-update activé par défaut** : listes DNS + CVE téléchargées au
+  démarrage puis rafraîchies toutes les **6h** en arrière-plan
+- **Mises à jour des signatures ClamAV** via `freshclam` intégré (option
+  `-freshclam`, toutes les 2h)
+- **Workflow auto-release hebdo** : un tag auto-daté est créé chaque lundi,
+  déclenchant une release toute seule
+- **Dependabot** : les dépendances Go (`miekg/dns`…) et les GitHub Actions
+  sont mises à jour par PR automatiques
+- Nouvelle observabilité : `updater.Status()` (dernier fetch, nb domaines…)
+
+### 🔜 v0.5 — Android complet + UI de scan
 Forward tun2socks, filtrage par UID, UI Compose détaillée, UI de scan ClamAV,
 F-Droid.
 
-### 🔜 v0.5 — Pilote WFP avancé (Windows)
+### 🔜 v0.6 — Pilote WFP avancé (Windows)
 Callouts WFP mode utilisateur, association PID↔connexion, mode `ask` prompt.
 
 ### 🔜 v1.0 — Stabilisation & grand public

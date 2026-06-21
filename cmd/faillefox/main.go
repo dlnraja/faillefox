@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 
 	"github.com/dlnraja/faillefox/internal/api"
 	"github.com/dlnraja/faillefox/internal/clamscan"
@@ -30,6 +31,7 @@ import (
 	_ "github.com/dlnraja/faillefox/internal/drivers/netfw"    // registre windows-netfw
 	_ "github.com/dlnraja/faillefox/internal/drivers/nftables" // registre linux-nftables
 	_ "github.com/dlnraja/faillefox/internal/drivers/stub"     // registre stub (défaut)
+	"github.com/dlnraja/faillefox/internal/freshclam"
 	"github.com/dlnraja/faillefox/internal/logging"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
@@ -42,14 +44,20 @@ func main() {
 		listOnly     = flag.Bool("list-drivers", false, "affiche les pilotes compilés dans ce binaire et quitte")
 		profile      = flag.String("profile", "home", "profil réseau (home, office, public)")
 		blocklistArg = flag.String("blocklist", "", "fichier hosts à charger comme liste anti-trackers")
-		noLog        = flag.Bool("no-persistent-log", false, "désactive le journal persistant sur disque")
+		noLog = flag.Bool("no-persistent-log", false, "désactive le journal persistant sur disque")
 
 		// --- v0.3 : bouclier réseau/DNS + CVE + ClamAV ---
-		dnsEnabled   = flag.Bool("dns", false, "active le résolveur DNS sinkhole (bloque pubs/trackers/malwares au niveau DNS)")
-		dnsPort      = flag.Int("dns-port", 5353, "port du résolveur DNS local (loopback)")
-		autoUpdate   = flag.Bool("auto-update", false, "télécharge/rafraîchit automatiquement les listes DNS et CVE (24h)")
-		cveEnabled   = flag.Bool("cve", false, "active la veille CVE (alerte sur logiciels installés vulnérables)")
-		clamscanOn   = flag.Bool("clamav", false, "active le scanner ClamAV (nécessite ClamAV installé)")
+		dnsEnabled = flag.Bool("dns", false, "active le résolveur DNS sinkhole (bloque pubs/trackers/malwares au niveau DNS)")
+		dnsPort    = flag.Int("dns-port", 5353, "port du résolveur DNS local (loopback)")
+		cveEnabled = flag.Bool("cve", false, "active la veille CVE (alerte sur logiciels installés vulnérables)")
+		clamscanOn = flag.Bool("clamav", false, "active le scanner ClamAV (nécessite ClamAV installé)")
+
+		// --- v0.4 : automatisation autonome ---
+		// auto-update est ACTIVÉ PAR DÉFAUT : le démon télécharge les listes
+		// au démarrage puis toutes les 6h. -no-autoupdate pour désactiver.
+		noAutoUpdate = flag.Bool("no-autoupdate", false, "désactive l'auto-update des listes DNS/CVE (activé par défaut)")
+		updateEvery  = flag.Duration("update-every", 6*time.Hour, "intervalle entre deux mises à jour (défaut 6h)")
+		freshclamOn  = flag.Bool("freshclam", false, "active la mise à jour auto des signatures ClamAV (2h)")
 	)
 	flag.Parse()
 
@@ -106,13 +114,17 @@ func main() {
 		log.Printf("[main] profil changé -> %s", newProfile)
 	})
 
-	// 5b. Auto-update des listes DNS (télécharge StevenBlack + OISD dans la
-	//     blocklist partagée). Optionnel, désactivé par défaut car il fait
-	//     des appels réseau au démarrage.
-	if *autoUpdate {
+	// 5b. Auto-update des listes DNS + CVE. ACTIVÉ PAR DÉFAUT en v0.4 : le
+	//     démon télécharge les listes (StevenBlack, OISD) au démarrage puis
+	//     rafraîchit toutes les `updateEvery` (6h par défaut). Le fetch est
+	//     non bloquant (goroutine dédiée), le démon répond immédiatement.
+	if !*noAutoUpdate {
 		upd := updater.New(bl)
+		upd.SetUpdateEvery(*updateEvery)
 		go upd.Start(context.Background())
-		log.Printf("[main] auto-update des listes DNS activé (sources publiques)")
+		log.Printf("[main] auto-update activé: sources publiques DNS, rafraîchi toutes les %s", *updateEvery)
+	} else {
+		log.Printf("[main] auto-update DÉSACTIVÉ (-no-autoupdate)")
 	}
 
 	// 5c. Résolveur DNS sinkhole (bloque pubs/trackers/malwares au niveau DNS,
@@ -147,6 +159,19 @@ func main() {
 	if *clamscanOn {
 		av = clamscan.New()
 		av.LogAvailability()
+	}
+
+	// 5f. Mise à jour automatique des signatures ClamAV (freshclam). Nécessite
+	//     que ClamAV soit installé. Invoque freshclam toutes les 2h pour rester
+	//     à jour sur les malwares émergents.
+	if *freshclamOn {
+		fc := freshclam.New()
+		if fc.IsAvailable() {
+			go fc.Start(context.Background())
+			log.Printf("[main] mise à jour auto des signatures ClamAV activée (toutes les 2h)")
+		} else {
+			log.Printf("[warn] -freshclam: freshclam non trouvé (installez ClamAV)")
+		}
 	}
 
 	// 6. Driver natif.
