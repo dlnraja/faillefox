@@ -78,7 +78,7 @@ func (s *Scanner) LoadRules(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return s.loadFromReader(f, path)
 }
 
@@ -188,7 +188,7 @@ func sha256OfFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
