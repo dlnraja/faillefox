@@ -171,16 +171,21 @@ jobs:
 
       - name: Build Windows installer
         shell: pwsh
+        # Le script build-installer.ps1 gère le build binaire + VERSIONINFO
+        # + appel iscc. Il attend une version sans le 'v' initial.
         run: |
           $tag = "${{ inputs.tag || github.ref_name }}"
           $ver = $tag.TrimStart("v")
-          # Build binaire + VERSIONINFO.
+          Write-Host "==> Version: $ver"
+          # Build binaire Windows à la racine (le .iss le cherche là).
           $env:GOOS="windows"; $env:GOARCH="amd64"; $env:CGO_ENABLED="0"
           go build -trimpath -ldflags="-s -w" -o faillefox.exe ./cmd/faillefox
-          # Compile l'installateur.
+          if (-not (Test-Path faillefox.exe)) { throw "go build failed" }
+          # Inno Setup : iscc est dans Program Files (x86)\Inno Setup 6.
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DMyAppVersion=$ver" deploy/windows/faillefox.iss
-          ls deploy/windows/Output/
+          if (-not (Test-Path $iscc)) { throw "Inno Setup 6 non trouvé" }
+          & $iscc "/DMyAppVersion=$ver" "deploy/windows/faillefox.iss"
+          Get-ChildItem deploy/windows/Output/ -ErrorAction SilentlyContinue
 
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
