@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="0.2.0.0" name="dlnraja.faillefox.app" type="win32"/>
+  <description>Faillefox — Pare-feu multiplateforme</description>
+
+  <!-- Niveau d'exécution : asInvoker par défaut. Le pilote windows-netfw
+       demande les droits admin via netsh ; l'utilisateur verra une demande
+       UAC uniquement si besoin. -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <!-- Compatibilité Windows 10 / 11 -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/> <!-- Win10/11 -->
+    </application>
+  </compatibility>
+</assembly>

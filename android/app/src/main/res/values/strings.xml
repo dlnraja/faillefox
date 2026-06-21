@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Faillefox</string>
+    <string name="start">Activer le pare-feu</string>
+    <string name="stop">Désactiver</string>
+    <string name="protected">🦊 Protégé</string>
+    <string name="not_protected">Non protégé</string>
+</resources>

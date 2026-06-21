@@ -2,15 +2,21 @@
 
 [![CI](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml)
 [![Lint](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml)
+[![Release](https://github.com/dlnraja/faillefox/actions/workflows/release.yml/badge.svg)](https://github.com/dlnraja/faillefox/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dlnraja/faillefox)](https://goreportcard.com/report/github.com/dlnraja/faillefox)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Release](https://github.com/dlnraja/faillefox/actions/workflows/release.yml/badge.svg)](https://github.com/dlnraja/faillefox/releases)
+[![Platforms](https://img.shields.io/badge/plateformes-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS%20%C2%B7%20Android-success)](#-feuille-de-route)
 
 > **Faillefox est un VRAI pare-feu gratuit, libre (GPL-3.0) et multiplateforme**
-> (Windows / Android / Linux), né en réaction à la parodie
+> (Windows / Android / Linux), né en réaction à la **parodie**
 > [`faillefox.com`](https://faillefox.com) — elle-même née d'une perle
 > télévisée. Ce dépôt fait l'inverse de la parodie : il construit un outil
 > de sécurité **réel**, transparent et open source.
+
+📖 **Documentation** : [Présentation](docs/presentation.md) · [Architecture](docs/design.md) ·
+[Android](docs/android.md) · [Antivirus & signature](docs/antivirus.md) ·
+[Feuille de route](ROADMAP.md)
 
 ---
 
@@ -27,13 +33,12 @@ Mythos 5* »), puis glisse vers Firefox :
 
 Lui-même reconnaît son embrouille à l'antenne.
 
-**Source vérifiée** :
-« Joseph Macé-Scaron alerte sur les dangers de l'intelligence artificielle »,
-CNews (YouTube), publié le 16/06/2026, durée 2:46 —
+**Source vérifiée** : « Joseph Macé-Scaron alerte sur les dangers de
+l'intelligence artificielle », CNews (YouTube), 16/06/2026 —
 **[youtube.com/watch?v=aZZGPZ4l0_Q](https://www.youtube.com/watch?v=aZZGPZ4l0_Q)**
 
 À la suite de cette séquence, le site **[faillefox.com](https://faillefox.com)**
-apparaît : une **parodie** de pare-feu dont le slogan affiché est :
+apparaît : une **parodie** de pare-feu dont le slogan est :
 
 > *« Pare-feu, navigateur, antivirus, IA : Faillefox fait tout. **Sauf vous
 > protéger.** »* — accompagné de mentions comme « *461 failles incluses* »
@@ -50,7 +55,7 @@ multiplateforme, et qui protège effectivement ?
 
 ---
 
-## ✨ Que fait Faillefox (v1) ?
+## ✨ Que fait Faillefox ?
 
 Faillefox intercepte les connexions réseau sortantes et vous laisse décider,
 **par application**, ce qui a le droit de sortir sur Internet :
@@ -59,30 +64,38 @@ Faillefox intercepte les connexions réseau sortantes et vous laisse décider,
   par app (bloquer/autoriser l'accès Internet de chaque programme).
 - 🔴 **Mode avancé** — règles précises : application + protocole (TCP/UDP)
   + port + IP.
+- 🚫 **Blocklist anti-trackers/publicités** optionnelle (façon Pi-hole local).
+- 🏠 **Profils réseau** (Maison / Bureau / Public) — blocage plus strict
+  automatiquement sur les réseaux publics.
 - 📜 **Journal temps réel** — chaque connexion interceptée et chaque
-  décision sont affichées en direct (Server-Sent Events).
+  décision sont affichées en direct (SSE) **et** persistées sur disque
+  (rotation automatique).
 - 🎛️ **Politique par défaut** configurable : tout autoriser, tout bloquer,
   ou demander pour chaque nouvelle app.
 
 Le tout pilotable depuis un **panneau web local** ouvert dans votre
 navigateur, **jamais exposé sur le réseau**.
 
-### Captures / démonstration
+### Plateformes supportées (v0.2)
 
-Le binaire actuel tourne avec un **pilote de démonstration (`stub`)** qui
-simule des connexions : vous pouvez tester toute l'interface et toute la
-logique sans droits administrateur et sans interception réelle. Les pilotes
-natifs (WFP, VPNService, nftables) sont en cours d'intégration — voir
-[la feuille de route](#-feuille-de-route).
+| Plateforme | Pilote | Statut |
+|------------|--------|--------|
+| **Windows** | `windows-netfw` (Pare-feu Windows via `netsh`) | ✅ réel |
+| **Linux** | `linux-nftables` (nftables / iptables) | ✅ réel |
+| **macOS** | `stub` | ⏳ stub (v0.5) |
+| **Android** | `android-vpn` (VPNService + gomobile) | ⏳ scaffold (v0.4) |
+| Toutes | `stub` (simulation) | ✅ démo sans droits admin |
 
 ---
 
 ## 🚀 Démarrage rapide
 
-### Prérequis
-- [Go](https://go.dev/dl/) 1.26+ (pour compiler depuis les sources)
+### Télécharger les binaires
 
-### Compilation & lancement
+👉 **[Dernière release](https://github.com/dlnraja/faillefox/releases/latest)**
+binaires Windows / Linux / macOS (amd64 + arm64) + sommes SHA256.
+
+### Compiler depuis les sources
 
 ```bash
 git clone https://github.com/dlnraja/faillefox.git
@@ -101,10 +114,29 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 ### Options en ligne de commande
 
 ```text
--driver string      pilote de filtrage (stub, windows-wfp, android-vpn, linux-nftables) (défaut "stub")
+-driver string      pilote: windows-netfw | linux-nftables | stub (défaut auto)
 -port int           port d'écoute du panneau, loopback uniquement (défaut 8443)
 -data string        répertoire de données (défaut ~/.faillefox)
+-profile string     profil réseau: home | office | public (défaut home)
+-blocklist string   fichier hosts à charger comme liste anti-trackers
+-no-persistent-log  désactive le journal persistant sur disque
 -list-drivers       affiche les pilotes compilés et quitte
+```
+
+### Exemples
+
+```bash
+# Démarrage normal (pilote auto selon l'OS)
+./faillefox
+
+# Profil public + blocklist anti-pubs
+./faillefox -profile public -blocklist blocklist.txt
+
+# Windows : pilote Pare-feu Windows (nécessite droits admin pour netsh)
+./faillefox.exe -driver windows-netfw
+
+# Linux : pilote nftables (nécessite root)
+sudo ./faillefox -driver linux-nftables
 ```
 
 ---
@@ -120,18 +152,21 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
                         │ HTTP REST + SSE (loopback 127.0.0.1)
 ┌───────────────────────▼────────────────────────────────────┐
 │            internal/core  —  cœur Go partagé                │
-│   • Engine : moteur de décision (rules + default)          │
+│   • Engine : moteur de décision (rules + default + blocklist)│
+│   • Profils réseau (home/office/public)                     │
 │   • Journal d'événements (ring buffer + abonnés SSE)       │
 │   • Store : persistance JSON (~/.faillefox/policies.json)   │
 │   • interface Driver : contrat des backends natifs         │
 └───────────────────────┬────────────────────────────────────┘
                         │ interface Driver (Inspect/Apply/ListApps)
-        ┌───────────────┼─────────────────────────┐
-┌───────▼────────┐ ┌─────▼──────────┐ ┌───────────▼─────────┐
-│ windows-wfp    │ │ android-vpn    │ │ linux-nftables      │
-│ (WFP callouts, │ │ (VPNService    │ │ (nftables /         │
-│  droits admin) │ │  via gomobile) │ │  NFQUEUE/eBPF)      │
-└────────────────┘ └────────────────┘ └─────────────────────┘
+        ┌───────────────┼────────────────┬───────────────────┐
+┌───────▼────────┐ ┌─────▼──────────┐ ┌──▼──────────┐ ┌─────▼────────┐
+│ windows-netfw  │ │ linux-nftables │ │ android-vpn │ │ stub (démo)  │
+│ Pare-feu Win   │ │ nftables/      │ │ VPNService  │ │ simulation   │
+│ (netsh)        │ │ iptables       │ │ + gomobile  │ │              │
+└────────────────┘ └────────────────┘ └─────────────┘ └──────────────┘
+        │                  │                │
+   droits admin       root/CAP_NET_ADMIN   autorisation VPN
 ```
 
 **Principe clé** : `internal/core` ne sait *rien* du filtrage bas niveau.
@@ -143,11 +178,15 @@ UI) entre plateformes — seul le *glue* natif change.
 
 | Répertoire | Rôle |
 |------------|------|
-| `internal/core` | Cœur : types, moteur, règles, journal, store, registry |
+| `internal/core` | Cœur : types, moteur, règles, journal, store, blocklist, profils, registry |
 | `internal/api` | Serveur HTTP + SSE (loopback) + UI web embarquée |
-| `internal/drivers/stub` | Pilote de démonstration (simule des connexions) |
+| `internal/logging` | Journal persistant rotatif (JSONL) |
+| `internal/drivers/stub` | Pilote de démonstration |
+| `internal/drivers/netfw` | Pilote Windows (Pare-feu Windows) |
+| `internal/drivers/nftables` | Pilote Linux (nftables/iptables) |
+| `pkg/android` | Bindings gomobile pour l'app Android |
+| `android/` | App Android Kotlin (Gradle + VpnService) |
 | `cmd/faillefox` | Point d'entrée (`main.go`) |
-| `internal/api/web` | UI (HTML/CSS/JS) embarquée via `go:embed` |
 
 ---
 
@@ -155,79 +194,83 @@ UI) entre plateformes — seul le *glue* natif change.
 
 Faillefox se positionne dans un vide : **aucun projet open source majeur
 ne couvre aujourd'hui Windows + Android + Linux avec une UI unifiée.**
-Chaque projet ci-dessous cible une seule plateforme.
 
-| Projet | Plateformes | Langage | Mécanisme de filtrage | Licence | Lien |
-|--------|-------------|---------|-----------------------|---------|------|
-| **OpenSnitch** | Linux, macOS | Go + Python + C | eBPF / netfilter, par app | GPL-3.0 | [github.com/opensnitch/opensnitch](https://github.com/opensnitch/opensnitch) |
-| **NetGuard** | Android | Java/Kotlin | VPNService, par app | Apache-2.0 | [github.com/M66B/NetGuard](https://github.com/M66B/NetGuard) |
-| **simplewall** | Windows | C++ | WFP (Windows Filtering Platform) | GPL-3.0 | [github.com/henrypp/simplewall](https://github.com/henrypp/simplewall) |
-| **RethinkDNS** | Android | Kotlin | VPNService + DNS chiffré | MPL-2.0 | [github.com/celzero/rethink-app](https://github.com/celzero/rethink-app) |
-| **OpenSnitch-ui** (forks) | Linux | Python | idem OpenSnitch | GPL-3.0 | — |
-| **Faillefox** (ce projet) | **Windows + Android + Linux** | **Go** (cœur) | WFP / VPNService / nftables | **GPL-3.0** | ce dépôt |
+| Projet | Plateformes | Langage | Mécanisme | Licence |
+|--------|-------------|---------|-----------|---------|
+| [OpenSnitch](https://github.com/opensnitch/opensnitch) | Linux, macOS | Go + Python | eBPF / netfilter | GPL-3.0 |
+| [NetGuard](https://github.com/M66B/NetGuard) | Android | Kotlin | VPNService | Apache-2.0 |
+| [simplewall](https://github.com/henrypp/simplewall) | Windows | C++ | WFP | GPL-3.0 |
+| [RethinkDNS](https://github.com/celzero/rethink-app) | Android | Kotlin | VPNService + DNS | MPL-2.0 |
+| **Faillefox** | **Windows + Android + Linux** | **Go** | netsh / nftables / VpnService | **GPL-3.0** |
 
 **Ce qui inspire Faillefox** :
 - d'**OpenSnitch** — l'architecture Go + cœur partagé + UI séparée ;
-- de **NetGuard** — le modèle de filtrage par application sur Android ;
-- de **simplewall** — l'utilisation de WFP pour le filtrage par app sur Windows ;
-- de **RethinkDNS** — une UI grand public soignée.
-
-**Ce que Faillefox tente d'apporter en plus** : une UI unique pour tous les
-OS (donc un moindre effort de maintenance), et un cœur écrit en Go — un
-langage compilé, à la mémoire gérée (sûreté face aux débordements de tampon,
-critique pour un outil de sécurité).
+- de **NetGuard** — le filtrage par application sur Android ;
+- de **simplewall** — l'utilisation de l'API pare-feu Windows ;
+- de **RethinkDNS** — une UI grand public soignée + DNS.
 
 ---
 
-## 🔒 Considérations de sécurité
+## 🔒 Considérations de sécurité & antivirus
 
 - **Canal de contrôle loopback uniquement.** Le serveur HTTP bind sur
-  `127.0.0.1`, jamais sur `0.0.0.0`. Le pare-feu ne peut pas être piloté
-  depuis le réseau.
-- **Persistance en écriture atomique** (fichier temporaire + renommage)
-  pour éviter la corruption des règles.
+  `127.0.0.1`, jamais sur `0.0.0.0`.
+- **Persistance en écriture atomique** (fichier temporaire + renommage).
 - **Aucune télémétrie, aucun appel réseau sortant du démon lui-même.**
-- **Code source ouvert** : tout est auditable. Vous ne faites pas confiance
-  à un éditeur, vous lisez le code.
-- **Mises en garde honnêtes** : la v1 actuelle utilise un pilote `stub`
-  qui ne filtre pas encore réellement le trafic — voir la feuille de route.
-  N'utilisez pas la v1 actuelle comme votre seule ligne de défense.
+- **Code source ouvert** (GPL-3.0) : tout est auditable.
+- **Sûreté mémoire** : cœur en Go (GC, pas de débordements de tampon).
+- **Signature Authenticode** via SignPath (workflow prêt) — voir
+  [docs/antivirus.md](docs/antivirus.md).
+- **Honnêteté** : la v0.2 filtre réellement via `netsh`/`nftables` mais
+  n'est pas un pare-feu noyau complet — c'est dit clairement, pour ne pas
+  créer de faux sentiment de sécurité.
+
+📝 **Faux positifs antivirus ?** Faillefox écoute un port local et pilote
+le pare-feu système : ce sont des actions que les heuristiques AV peuvent
+trouver suspectes. La procédure complète (signature SignPath gratuite +
+soumission aux 10 principaux labs antivirus) est documentée dans
+**[docs/antivirus.md](docs/antivirus.md)**.
 
 ---
 
 ## 🗺️ Feuille de route
 
-### v0.1 — Cœur + UI (✅ actuel)
-- [x] Cœur Go : moteur de règles, journal, persistance
-- [x] API REST + SSE sur loopback
-- [x] UI web (mode simple, mode avancé, journal temps réel)
-- [x] Pilote `stub` de démonstration (testable sans droits admin)
+### ✅ v0.1 — Cœur + UI + pilote stub
+Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
 
-### v0.2 — Pilote Linux (prochaine étape)
-- [ ] Pilote `linux-nftables` via NFQUEUE (interception réelle par app)
-- [ ] Détection de l'application émettrice (via `/proc` + socket inode)
+### ✅ v0.2 — Vrais pilotes + anti-trackers + Android (actuelle)
+- Pilotes Windows (`windows-netfw`) et Linux (`linux-nftables`) réels
+- Blocklist anti-trackers, profils réseau, journal persistant rotatif
+- Scaffold Android complet (VpnService + Kotlin + gomobile)
+- Workflow SignPath + guide antivirus
 
-### v0.3 — Pilote Windows
-- [ ] Pilote `windows-wfp` (callouts WFP en mode utilisateur via `fwpuclnt`)
-- [ ] Association PID ↔ connexion (API IP Helper)
-- [ ] Service Windows + élévation de privilèges (UAC)
+### 🔜 v0.3 — Pilote WFP avancé + filtrage strict par app
+Callouts WFP mode utilisateur, association PID↔connexion, mode `ask` prompt.
 
-### v0.4 — Pilote Android
-- [ ] App Android (Kotlin) enshellant le cœur via `gomobile bind`
-- [ ] `VPNService` pour l'interception du trafic par app
-- [ ] UI native (Compose) en plus du panneau web
+### 🔜 v0.4 — Android complet
+Forward tun2socks, filtrage par UID, UI Compose détaillée, F-Droid.
 
-### v1.0 — Stabilisation
-- [ ] Tests d'intégration par plateforme
-- [ ] Build automatisé (CI GitHub Actions)
-- [ ] Documentation d'installation grand public
+### 🔜 v1.0 — Stabilisation & grand public
+Installateurs natifs, signature auto, doc grand public, revue sécurité.
+
+Voir [`ROADMAP.md`](ROADMAP.md) pour le détail complet.
+
+---
+
+## 🧪 Qualité & CI
+
+- **23 tests unitaires** (moteur, règles, journal, store, blocklist, profils,
+  logger rotatif) — `go test ./...`
+- **CI** sur matrice Ubuntu / Windows / macOS (build + vet + test).
+- **Lint** golangci-lint v2.12 (compatible Go 1.26).
+- **Release** multi-plateforme automatique sur tag.
 
 ---
 
 ## 🤝 Contribuer
 
 Les contributions sont les bienvenues — **particulièrement** sur les pilotes
-natifs (WFP, VPNService, nftables), qui nécessitent une expertise par OS.
+natifs (WFP, VPNService, nftables) qui nécessitent une expertise par OS.
 Voir [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---

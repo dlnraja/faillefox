@@ -18,6 +18,10 @@ type Engine struct {
 	store     Store
 	rules     []Rule
 	defaults  Decision // action quand aucune règle ne matche
+	blocklist *Blocklist
+
+	// sink persistant optionnel (rotating logger JSONL). nil = pas de log disque.
+	sink func(Event) error
 
 	// journal borné en mémoire (ring) pour l'affichage temps réel
 	journal   []Event
@@ -113,11 +117,48 @@ func (e *Engine) DeleteRule(id string) error {
 	return e.Save()
 }
 
+// SetSink enregistre un sink persistant pour les événements (rotating logger).
+// Passer nil désactive la persistance disque.
+func (e *Engine) SetSink(fn func(Event) error) {
+	e.mu.Lock()
+	e.sink = fn
+	e.mu.Unlock()
+}
+
+// SetBlocklist associe une blocklist au moteur. Si une connexion cible un
+// domaine présent dans la liste, elle est bloquée avant même l'évaluation
+// des règles.
+func (e *Engine) SetBlocklist(b *Blocklist) {
+	e.mu.Lock()
+	e.blocklist = b
+	e.mu.Unlock()
+}
+
 // Decide calcule la décision pour une connexion, journalise et notifie.
 // C'est la fonction appelée par les backends pour chaque connexion
 // sortante interceptée.
+//
+// Ordre d'évaluation :
+//  1. blocklist (anti-trackers/publicités) — si le domaine est listé, deny
+//  2. règles utilisateur (première qui matche gagne)
+//  3. politique par défaut
 func (e *Engine) Decide(c Connection) Decision {
 	e.mu.RLock()
+
+	// 1. Blocklist prioritaire sur tout.
+	if e.blocklist != nil && c.HostName() != "" && e.blocklist.Contains(c.HostName()) {
+		e.mu.RUnlock()
+		ev := Event{
+			ID:         newID(),
+			Connection: c,
+			Decision:   DecisionDeny,
+			Reason:     "blocklist",
+			At:         time.Now(),
+		}
+		e.appendEvent(ev)
+		return DecisionDeny
+	}
+
 	matched := Decision("")
 	reason := "default"
 	for _, r := range e.rules {
@@ -153,6 +194,14 @@ func (e *Engine) appendEvent(ev Event) {
 		e.journal = e.journal[len(e.journal)-e.journalCap:]
 	}
 	e.journalMu.Unlock()
+
+	// Persistance disque optionnelle (rotating logger JSONL).
+	e.mu.RLock()
+	sink := e.sink
+	e.mu.RUnlock()
+	if sink != nil {
+		_ = sink(ev) // meilleure effort : ne bloque pas le filtrage
+	}
 
 	e.subsMu.Lock()
 	for _, ch := range e.subs {

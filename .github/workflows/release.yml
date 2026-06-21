@@ -2,11 +2,15 @@
 # puis crée une GitHub Release sur chaque tag v*.*.*
 #
 # Déclenchement : pousser un tag de version.
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.2.0 && git push origin v0.2.0
 #
 # Produit des binaires pour Windows, Linux, macOS (amd64 + arm64), ZIP/tar.gz
 # et un fichier SHA256SUMS vérifiable. L'UI web est embarquée via go:embed :
 # chaque binaire est autonome, sans fichier externe.
+#
+# Pour Windows, on génère aussi une ressource VERSIONINFO (.syso) via
+# goversioninfo, qui embarque les métadonnées (Company, Product, Version,
+# manifeste UAC) dans le .exe — cela réduit les faux positifs AV.
 name: Release
 
 on:
@@ -29,10 +33,28 @@ jobs:
           go-version: "1.26"
           cache: true
 
+      - name: Install goversioninfo (pour VERSIONINFO Windows)
+        run: go install github.com/josephspurrier/goversioninfo@latest
+
+      - name: Generate Windows VERSIONINFO resource (.syso)
+        # goversioninfo produit resource.syso dans cmd/faillefox/.
+        # go build le lie automatiquement pour la cible Windows (convention
+        # Go : tout .syso dans le package main est lié au binaire).
+        run: |
+          cd cmd/faillefox
+          $HOME/go/bin/goversioninfo \
+            -skip-versioninfo \
+            -ver-file-major=0 -ver-file-minor=2 -ver-file-patch=0 \
+            -product-version-major=0 -product-version-minor=2 -product-version-patch=0 \
+            -company-name="dlnraja" \
+            -product-name="Faillefox" \
+            -file-description="Faillefox - Pare-feu multiplateforme" \
+            -copyright="(c) 2026 dlnraja - GPL-3.0" \
+            -original-filename="faillefox.exe"
+
       - name: Cross-compile all targets
-        # Une matrice de couples GOOS/GOARCH. CGO_ENABLED=0 pour des
-        # binaires statiques portables. -trimpath -ldflags="-s -w" pour
-        # des binaires plus petits sans infos de debug.
+        # CGO_ENABLED=0 pour des binaires statiques portables.
+        # -trimpath -ldflags="-s -w" pour des binaires plus petits.
         run: |
           mkdir -p dist
           build_one () {
@@ -52,12 +74,14 @@ jobs:
           build_one darwin  arm64
 
       - name: Package archives + checksums
-        # ZIP pour Windows, tar.gz pour Unix, puis sommes SHA256.
+        # ZIP pour Windows (avec LICENSE/README/guide AV), tar.gz pour Unix,
+        # puis sommes SHA256.
         run: |
           cd dist
+          cp ../docs/antivirus.md ./ANTIVIRUS.txt 2>/dev/null || true
           for f in faillefox-*; do
             case "$f" in
-              *.exe) zip -q "${f}.zip" "$f" ;;
+              *.exe) zip -q "${f}.zip" "$f" ../LICENSE ../README.md ./ANTIVIRUS.txt ;;
               *)     tar -czf "${f}.tar.gz" "$f" ;;
             esac
           done

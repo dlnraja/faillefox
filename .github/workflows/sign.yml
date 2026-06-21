@@ -1,0 +1,68 @@
+# Sign : signature Authenticode du binaire Windows via SignPath (gratuit
+# pour les projets open source). Ne se déclenche que si les secrets
+# SignPath sont configurés dans le dépôt ; sinon il est ignoré sans erreur.
+#
+# Configuration (une fois, dans GitHub) :
+#   1. Créer un compte organisation sur https://signpath.org/
+#   2. Demander la signature gratuite OSS (vérification du dépôt GitHub).
+#   3. Dans SignPath, créer un projet pour Faillefox + une "policy".
+#   4. Générer un API token, l'ajouter comme secret GitHub "SIGNPATH_API_TOKEN".
+#   5. Renseigner aussi "SIGNPATH_PROJECT_SLUG" et "SIGNPATH_POLICY_SLUG".
+#
+# Une fois configuré, ce workflow signe automatiquement le .exe Windows à
+# chaque release, ce qui supprime les faux positifs antivirus.
+name: Sign
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      asset_url:
+        description: "URL du .zip Windows à signer"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    name: Sign Windows binary
+    runs-on: ubuntu-latest
+    # Si les secrets ne sont pas configurés, le job saute proprement.
+    if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
+    steps:
+      - name: Fetch the Windows asset
+        run: |
+          URL="${{ inputs.asset_url || '' }}"
+          if [ -z "$URL" ]; then
+            # En mode release : on récupère le zip Windows depuis la release.
+            URL=$(gh release view --repo ${{ github.repository }} \
+                  --json assets --jq '.assets[] | select(.name | test("windows-amd64.*zip$")) | .url')
+          fi
+          curl -fsSL -o faillefox-windows.zip "$URL"
+          unzip -o faillefox-windows.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign with SignPath
+        uses: signpath/github-action-signpath-submit-signing-request@v1
+        with:
+          api-url: "https://app.signpath.org/"
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: "faillefox-exe"
+          github-artifact-id: faillefox-windows-amd64.exe
+          wait-for-completion: true
+          output-artifact-directory: signed/
+
+      - name: Re-package and re-upload
+        run: |
+          zip -q faillefox-windows-amd64-signed.exe.zip signed/faillefox-windows-amd64.exe
+          sha256sum faillefox-windows-amd64-signed.exe.zip > SHA256SUMS-signed
+          gh release upload "${{ github.event.release.tag_name }}" \
+            faillefox-windows-amd64-signed.exe.zip SHA256SUMS-signed --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
