@@ -19,6 +19,15 @@ on:
       # Matche les tags manuels (v0.4.0) ET les auto-releases hebdo
       # (v0.2026.25.1 — 4 composantes).
       - "v*"
+  # Permet au workflow weekly-release de l'invoquer directement (évite la
+  # limitation GitHub : un push de tag fait par github-actions[bot] ne
+  # déclenche PAS d'autres workflows).
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag de version à créer"
+        required: true
+        type: string
 
 permissions:
   contents: write # nécessaire pour créer la release et uploader les assets
@@ -28,7 +37,11 @@ jobs:
     name: Build & Release
     runs-on: ubuntu-latest
     steps:
+      # Si appelé via workflow_call, on checkout le tag fourni ; sinon on
+      # utilise le comportement par défaut (le tag qui a déclenché le push).
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-go@v5
         with:
@@ -90,6 +103,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # tag_name explicite : utilise inputs.tag si appelé via workflow_call,
+          # sinon le tag qui a déclenché le workflow (github.ref_name).
+          tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true # notes auto depuis les PRs/commits
           files: |
             dist/faillefox-*.zip

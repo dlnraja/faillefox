@@ -1,7 +1,11 @@
 name: Weekly auto-release
 
-# Auto-release hebdomadaire : cree un tag daté chaque lundi, ce qui
-# declenche le workflow release.yml (build multi-OS + GitHub Release).
+# Auto-release hebdomadaire : cree un tag date chaque lundi, PUIS invoque
+# directement le workflow release.yml (via workflow_call) pour builder et
+# publier la release. On n'utilise pas le push de tag pour declencher
+# release.yml car GitHub bloque les workflows declenches par un push fait
+# par github-actions[bot] (anti-boucle).
+#
 # Permet aussi un declenchement manuel depuis l'onglet Actions.
 on:
   schedule:
@@ -13,8 +17,11 @@ permissions:
 
 jobs:
   autotag:
-    name: Create weekly tag
+    name: Create weekly tag and release
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      skipped: ${{ steps.check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,3 +61,14 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.ver.outputs.tag }}" -m "Auto-release hebdomadaire ${{ steps.ver.outputs.tag }}"
           git push origin "${{ steps.ver.outputs.tag }}"
+
+  # Etape 2 : invoque release.yml directement (pas via push de tag).
+  release:
+    name: Build & publish
+    needs: autotag
+    if: needs.autotag.outputs.skipped != 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.autotag.outputs.tag }}
+    permissions:
+      contents: write
