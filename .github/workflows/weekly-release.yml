@@ -14,7 +14,8 @@ on:
   schedule:
     # Chaque lundi à 04:00 UTC (évite les heures de pointe des runners GH).
     - cron: "0 4 * * 1"
-  workflow_dispatch: # permet aussi de le déclencher à la main
+  # permet aussi de le déclencher à la main depuis l'onglet Actions
+  workflow_dispatch:
 
 permissions:
   contents: write # nécessaire pour pousser un tag
