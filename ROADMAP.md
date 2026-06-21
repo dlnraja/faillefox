@@ -27,7 +27,32 @@ une couche de fonctionnalité tout en gardant le cœur stable.
 - [x] Guide antivirus (soumission aux labs)
 - [x] Métadonnées VERSIONINFO + manifeste UAC Windows
 
-## 🔜 v0.3 — Pilote WFP avancé + filtrage strict par app
+## ✅ v0.3 — DNS sinkhole + CVE + ClamAV (publiée le 21/06/2026)
+
+Bouclier réseau/DNS complet + veille vulnérabilités + scan à la demande.
+**Honnêtement pas un antivirus temps réel** (voir docs/clamav.md) — c'est
+un complément qui s'ajoute à Windows Defender ou un AV commercial.
+
+- [x] **DNS sinkhole** : résolveur local 127.0.0.1 qui bloque pubs/trackers/
+      malwares pour tout le système (façon Pi-hole)
+- [x] **Auto-update** des listes DNS (sources StevenBlack, OISD, Abuse.ch)
+- [x] **Veille CVE** : interroge la base NVD officielle (gratuite) et alerte
+      si un logiciel installé a une faille connue
+- [x] **Scanner ClamAV** : seul moteur AV open source, intégré via clamd
+      (daemon) et clamscan (CLI) — limité vs solutions commerciales
+- [x] Dépendance `miekg/dns` (librairie Go de référence pour DNS)
+- [x] ~17 nouveaux tests (DNS sinkhole, CVE feed, ClamAV parser, updater)
+
+## 🔜 v0.4 — Android complet + UI de scan
+
+- [ ] Forward des paquets via tun2socks (interception réelle sur Android)
+- [ ] Filtrage par UID (par app Android)
+- [ ] UI native détaillée (Jetpack Compose) : liste des apps, journal
+- [ ] UI de scan ClamAV dans le panneau web (fichiers/dossiers)
+- [ ] Notifications système pour le mode `ask` et les CVE
+- [ ] Publication sur F-Droid (apks signés reproductiblement)
+
+## 🔜 v0.5 — Pilote WFP avancé + filtrage strict par app
 
 Objectif : filtrage par application **strict** et en temps réel sur Windows,
 via WFP (Windows Filtering Platform).
@@ -38,14 +63,6 @@ via WFP (Windows Filtering Platform).
 - [ ] Mode `ask` : prompt système à la première connexion d'une app
 - [ ] Pilote Linux : association paquet→PID via NFQUEUE + `/proc/net`
 - [ ] Tests d'intégration par plateforme
-
-## 🔜 v0.4 — Android complet
-
-- [ ] Forward des paquets via tun2socks (interception réelle)
-- [ ] Filtrage par UID (par app Android)
-- [ ] UI native détaillée (Jetpack Compose) : liste des apps, journal
-- [ ] Notifications système pour le mode `ask`
-- [ ] Publication sur F-Droid (apks signés reproductiblement)
 
 ## 🔜 v0.5 — Fonctionnalités avancées
 

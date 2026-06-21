@@ -57,26 +57,38 @@ multiplateforme, et qui protège effectivement ?
 
 ## ✨ Que fait Faillefox ?
 
-Faillefox intercepte les connexions réseau sortantes et vous laisse décider,
-**par application**, ce qui a le droit de sortir sur Internet :
+Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
 
-- 🟢 **Mode simple** — une liste d'applications avec un interrupteur on/off
-  par app (bloquer/autoriser l'accès Internet de chaque programme).
-- 🔴 **Mode avancé** — règles précises : application + protocole (TCP/UDP)
-  + port + IP.
-- 🚫 **Blocklist anti-trackers/publicités** optionnelle (façon Pi-hole local).
+- 🟢 **Pare-feu par application** — bloquez/autorisez l'accès Internet de
+  chaque programme (mode simple interrupteurs, ou mode avancé règles
+  IP/port/protocole).
+- 🚫 **DNS sinkhole** (façon Pi-hole local) — un résolveur DNS qui bloque
+  pubs, trackers et domaines malveillants **pour toutes les apps** de la
+  machine. Sources : StevenBlack, OISD, Abuse.ch (auto-mises-à-jour).
+- 🔄 **Auto-update des listes** — téléchargement et rafraîchissement
+  périodique des blocklists DNS (sources publiques).
+- 🛡️ **Veille CVE** — interroge la base **NVD officielle** (gratuite,
+  publique) et alerte si un logiciel installé a une vulnérabilité connue.
+- 🦠 **Scanner ClamAV** — seul moteur antivirus open source, intégré pour
+  le scan à la demande. ⚠️ Limité vs solutions commerciales — voir
+  [docs/clamav.md](docs/clamav.md).
 - 🏠 **Profils réseau** (Maison / Bureau / Public) — blocage plus strict
   automatiquement sur les réseaux publics.
-- 📜 **Journal temps réel** — chaque connexion interceptée et chaque
-  décision sont affichées en direct (SSE) **et** persistées sur disque
-  (rotation automatique).
-- 🎛️ **Politique par défaut** configurable : tout autoriser, tout bloquer,
-  ou demander pour chaque nouvelle app.
+- 📜 **Journal temps réel** — chaque décision est affichée en direct (SSE)
+  **et** persistée sur disque (rotation automatique).
 
 Le tout pilotable depuis un **panneau web local** ouvert dans votre
 navigateur, **jamais exposé sur le réseau**.
 
-### Plateformes supportées (v0.2)
+> ⚠️ **Honnêteté sur le périmètre** : Faillefox est un **bouclier réseau
+> et DNS + CVE + scan à la demande**. Ce n'est **pas** un antivirus temps
+> réel équivalent à Kaspersky/Bitdefender/ESET (moteur ML, sandbox,
+> heuristique comportementale) — c'est honnêtement impossible à reproduire
+> seul et gratuitement. Pour une protection complète, **combine Faillefox
+> avec Windows Defender** (gratuit, intégré à Windows). Voir
+> [docs/clamav.md](docs/clamav.md) pour le détail des limites ClamAV.
+
+### Plateformes supportées (v0.3)
 
 | Plateforme | Pilote | Statut |
 |------------|--------|--------|
@@ -119,6 +131,14 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 -data string        répertoire de données (défaut ~/.faillefox)
 -profile string     profil réseau: home | office | public (défaut home)
 -blocklist string   fichier hosts à charger comme liste anti-trackers
+
+# v0.3 — bouclier réseau/DNS + CVE + ClamAV
+-dns                active le résolveur DNS sinkhole (bloque pubs/trackers/malwares)
+-dns-port int       port du résolveur DNS local (loopback, défaut 5353)
+-auto-update        rafraîchit automatiquement les listes DNS + CVE (24h)
+-cve                active la veille CVE (base NVD officielle gratuite)
+-clamav             active le scanner ClamAV (nécessite ClamAV installé)
+
 -no-persistent-log  désactive le journal persistant sur disque
 -list-drivers       affiche les pilotes compilés et quitte
 ```
@@ -132,12 +152,29 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 # Profil public + blocklist anti-pubs
 ./faillefox -profile public -blocklist blocklist.txt
 
+# TOUT activer : pare-feu + DNS sinkhole + auto-update + CVE + ClamAV
+./faillefox -dns -auto-update -cve -clamav
+
 # Windows : pilote Pare-feu Windows (nécessite droits admin pour netsh)
 ./faillefox.exe -driver windows-netfw
 
 # Linux : pilote nftables (nécessite root)
-sudo ./faillefox -driver linux-nftables
+sudo ./faillefox -driver linux-nftables -dns -auto-update -cve
 ```
+
+### Activer le blocage DNS au niveau système
+
+Le résolveur DNS de Faillefox écoute sur `127.0.0.1:5353`. Pour que tout
+votre système l'utilise (et donc bloque pubs/trackers partout) :
+
+- **Windows** : Paramètres → Réseau → Propriétés de la carte → IPv4 →
+  Serveur DNS préféré : `127.0.0.1` (et adapter le port, ou mettre le port 53
+  en lançant Faillefox avec `-dns-port 53` en admin).
+- **Linux** : `/etc/resolv.conf` → `nameserver 127.0.0.1`.
+- **Android** : géré automatiquement via le `VpnService` (v0.4).
+
+> Note : le port DNS standard est 53 (nécessite root/admin). Faillefox
+> utilise 5353 par défaut (non privilégié) pour la facilité de démarrage.
 
 ---
 
@@ -238,17 +275,27 @@ soumission aux 10 principaux labs antivirus) est documentée dans
 ### ✅ v0.1 — Cœur + UI + pilote stub
 Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
 
-### ✅ v0.2 — Vrais pilotes + anti-trackers + Android (actuelle)
+### ✅ v0.2 — Vrais pilotes + anti-trackers + Android
 - Pilotes Windows (`windows-netfw`) et Linux (`linux-nftables`) réels
 - Blocklist anti-trackers, profils réseau, journal persistant rotatif
 - Scaffold Android complet (VpnService + Kotlin + gomobile)
 - Workflow SignPath + guide antivirus
 
-### 🔜 v0.3 — Pilote WFP avancé + filtrage strict par app
-Callouts WFP mode utilisateur, association PID↔connexion, mode `ask` prompt.
+### ✅ v0.3 — DNS sinkhole + CVE + ClamAV (actuelle)
+- **DNS sinkhole** : résolveur local qui bloque pubs/trackers/malwares pour
+  tout le système (façon Pi-hole)
+- **Auto-update** des listes DNS (StevenBlack, OISD, Abuse.ch)
+- **Veille CVE** : alerte si un logiciel installé a une faille connue (base
+  NVD officielle gratuite)
+- **Scanner ClamAV** : intégration du seul moteur AV open source (limité vs
+  solutions commerciales — voir [docs/clamav.md](docs/clamav.md))
 
-### 🔜 v0.4 — Android complet
-Forward tun2socks, filtrage par UID, UI Compose détaillée, F-Droid.
+### 🔜 v0.4 — Android complet + UI de scan
+Forward tun2socks, filtrage par UID, UI Compose détaillée, UI de scan ClamAV,
+F-Droid.
+
+### 🔜 v0.5 — Pilote WFP avancé (Windows)
+Callouts WFP mode utilisateur, association PID↔connexion, mode `ask` prompt.
 
 ### 🔜 v1.0 — Stabilisation & grand public
 Installateurs natifs, signature auto, doc grand public, revue sécurité.
@@ -259,8 +306,9 @@ Voir [`ROADMAP.md`](ROADMAP.md) pour le détail complet.
 
 ## 🧪 Qualité & CI
 
-- **23 tests unitaires** (moteur, règles, journal, store, blocklist, profils,
-  logger rotatif) — `go test ./...`
+- **~40 tests unitaires** (moteur, règles, journal, store, blocklist, profils,
+  logger rotatif, DNS sinkhole, CVE feed, ClamAV parser, updater) —
+  `go test ./...`
 - **CI** sur matrice Ubuntu / Windows / macOS (build + vet + test).
 - **Lint** golangci-lint v2.12 (compatible Go 1.26).
 - **Release** multi-plateforme automatique sur tag.

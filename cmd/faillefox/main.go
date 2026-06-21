@@ -23,11 +23,15 @@ import (
 	"syscall"
 
 	"github.com/dlnraja/faillefox/internal/api"
+	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
+	"github.com/dlnraja/faillefox/internal/cvefeed"
+	"github.com/dlnraja/faillefox/internal/dnsshield"
+	_ "github.com/dlnraja/faillefox/internal/drivers/netfw"    // registre windows-netfw
+	_ "github.com/dlnraja/faillefox/internal/drivers/nftables" // registre linux-nftables
+	_ "github.com/dlnraja/faillefox/internal/drivers/stub"     // registre stub (défaut)
 	"github.com/dlnraja/faillefox/internal/logging"
-	_ "github.com/dlnraja/faillefox/internal/drivers/netfw"     // registre windows-netfw
-	_ "github.com/dlnraja/faillefox/internal/drivers/nftables"  // registre linux-nftables
-	_ "github.com/dlnraja/faillefox/internal/drivers/stub"      // registre stub (défaut)
+	"github.com/dlnraja/faillefox/internal/updater"
 )
 
 func main() {
@@ -39,6 +43,13 @@ func main() {
 		profile      = flag.String("profile", "home", "profil réseau (home, office, public)")
 		blocklistArg = flag.String("blocklist", "", "fichier hosts à charger comme liste anti-trackers")
 		noLog        = flag.Bool("no-persistent-log", false, "désactive le journal persistant sur disque")
+
+		// --- v0.3 : bouclier réseau/DNS + CVE + ClamAV ---
+		dnsEnabled   = flag.Bool("dns", false, "active le résolveur DNS sinkhole (bloque pubs/trackers/malwares au niveau DNS)")
+		dnsPort      = flag.Int("dns-port", 5353, "port du résolveur DNS local (loopback)")
+		autoUpdate   = flag.Bool("auto-update", false, "télécharge/rafraîchit automatiquement les listes DNS et CVE (24h)")
+		cveEnabled   = flag.Bool("cve", false, "active la veille CVE (alerte sur logiciels installés vulnérables)")
+		clamscanOn   = flag.Bool("clamav", false, "active le scanner ClamAV (nécessite ClamAV installé)")
 	)
 	flag.Parse()
 
@@ -72,18 +83,20 @@ func main() {
 		}
 	}
 
-	// 4. Blocklist anti-trackers optionnelle.
+	// 4. Blocklist anti-trackers (partagée entre moteur et DNS sinkhole).
+	//     Soit chargée depuis un fichier local, soit (auto-update) téléchargée
+	//     depuis des listes publiques (StevenBlack, OISD).
+	bl := core.NewBlocklist()
 	if *blocklistArg != "" {
-		bl := core.NewBlocklist()
 		data, err := os.ReadFile(*blocklistArg)
 		if err != nil {
 			log.Printf("[warn] blocklist illisible (%v)", err)
 		} else {
 			n := bl.LoadFromHosts(string(data))
-			engine.SetBlocklist(bl)
 			log.Printf("[main] blocklist chargée: %d domaine(s)", n)
 		}
 	}
+	engine.SetBlocklist(bl)
 
 	// 5. Profil réseau (détermine la politique par défaut conseillée).
 	p := core.Profile(*profile)
@@ -92,6 +105,49 @@ func main() {
 	pm.OnChange(func(newProfile core.Profile) {
 		log.Printf("[main] profil changé -> %s", newProfile)
 	})
+
+	// 5b. Auto-update des listes DNS (télécharge StevenBlack + OISD dans la
+	//     blocklist partagée). Optionnel, désactivé par défaut car il fait
+	//     des appels réseau au démarrage.
+	if *autoUpdate {
+		upd := updater.New(bl)
+		go upd.Start(context.Background())
+		log.Printf("[main] auto-update des listes DNS activé (sources publiques)")
+	}
+
+	// 5c. Résolveur DNS sinkhole (bloque pubs/trackers/malwares au niveau DNS,
+	//     façon Pi-hole local). Optionnel. Écoute sur 127.0.0.1.
+	var dnsShield *dnsshield.Shield
+	if *dnsEnabled {
+		dnsShield = dnsshield.New(*dnsPort)
+		dnsShield.SetBlocklist(bl)
+		go func() {
+			if err := dnsShield.Start(context.Background()); err != nil {
+				log.Printf("[error] DNS sinkhole: %v", err)
+			}
+		}()
+		log.Printf("[main] DNS sinkhole activé: 127.0.0.1:%d (configurez votre OS pour l'utiliser)", *dnsPort)
+	}
+
+	// 5d. Veille CVE : interroge la base NVD (gratuite, officielle) et alerte
+	//     si un logiciel installé a une vulnérabilité connue.
+	if *cveEnabled {
+		feed := cvefeed.New()
+		go func() {
+			if err := feed.RefreshAll(context.Background()); err != nil {
+				log.Printf("[warn] veille CVE: %v", err)
+			}
+		}()
+		log.Printf("[main] veille CVE activée (base NVD officielle, gratuite)")
+	}
+
+	// 5e. Scanner ClamAV : seul moteur AV open source, mais LIMITÉ vs les
+	//     solutions commerciales. Ne remplace pas un AV temps réel.
+	var av *clamscan.Scanner
+	if *clamscanOn {
+		av = clamscan.New()
+		av.LogAvailability()
+	}
 
 	// 6. Driver natif.
 	driver, err := core.NewDriver(core.DriverConfig{
