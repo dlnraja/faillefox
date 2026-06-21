@@ -19,7 +19,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dlnraja/faillefox/internal/core"
@@ -27,7 +26,6 @@ import (
 
 // Updater gère le rafraîchissement périodique des listes.
 type Updater struct {
-	mu          sync.Mutex
 	blocklist   *core.Blocklist
 	dnsSources  []string // URLs des listes DNS
 	cveSource   string   // URL du flux NVD CVE
@@ -101,7 +99,7 @@ func (u *Updater) fetchHosts(ctx context.Context, url string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}

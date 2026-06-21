@@ -100,7 +100,7 @@ func (s *Scanner) scanViaDaemon(ctx context.Context, path string) (Result, error
 	if err != nil {
 		return Result{}, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Commande clamd : "SCAN chemin_absolu".
 	if _, err := fmt.Fprintf(conn, "SCAN %s\n", path); err != nil {
