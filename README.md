@@ -17,7 +17,7 @@
 > télévisée. Ce dépôt fait l'inverse de la parodie : il construit un outil
 > de sécurité **réel**, transparent et open source.
 
-📖 **Documentation** : [Présentation](docs/presentation.md) · [Architecture](docs/architecture.md) ·
+📖 **Documentation** : [Installation](docs/install.md) · [Présentation](docs/presentation.md) · [Architecture](docs/architecture.md) ·
 [Compilation](docs/build.md) · [Release](docs/release.md) ·
 [Android](docs/android.md) · [Antivirus & signature](docs/antivirus.md) ·
 [ClamAV](docs/clamav.md) · [Feuille de route](ROADMAP.md) ·
@@ -122,10 +122,21 @@ Guides d'installation détaillés par plateforme :
 
 ## 🚀 Démarrage rapide
 
-### Télécharger les binaires
+### Installer (le plus simple)
 
 👉 **[Dernière release](https://github.com/dlnraja/faillefox/releases/latest)**
-binaires Windows / Linux / macOS (amd64 + arm64) + sommes SHA256.
+— installateurs tout prêts + binaires portables.
+
+| OS | Méthode recommandée | Commande / lien |
+|----|---------------------|-----------------|
+| **Windows** | Installateur `.exe` (Next/Next/Finish) | Téléchargez `faillefox-setup-*.exe` |
+| **Linux (Debian/Ubuntu)** | Paquet `.deb` | `sudo dpkg -i faillefox_*_amd64.deb` |
+| **Linux (Fedora/RHEL)** | Paquet `.rpm` | `sudo dnf install faillefox-*.rpm` |
+| **macOS** | Homebrew | `brew tap dlnraja/faillefox https://github.com/dlnraja/faillefox` puis `brew install faillefox` |
+| **Android** | APK (sideloading) | Téléchargez `faillefox-*.apk` |
+
+📖 **Guide d'installation détaillé par plateforme** :
+**[docs/install.md](docs/install.md)** (Windows, Linux, macOS, Android)
 
 ### Compiler depuis les sources
 

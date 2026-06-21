@@ -119,3 +119,71 @@ jobs:
             dist/faillefox-*.zip
             dist/faillefox-*.tar.gz
             dist/SHA256SUMS
+
+  # Job 2 : paquets installables (.deb Linux + installateur .exe Windows).
+  # Tourne en parallèle du job release (qui produit les binaires nus).
+  packages:
+    name: Build installable packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Build .deb (Linux amd64)
+        run: |
+          chmod +x deploy/linux/build-deb.sh
+          ./deploy/linux/build-deb.sh "${{ inputs.tag || github.ref_name }}"
+          mv dist/*.deb dist/faillefox-latest.deb || true
+
+      - name: Upload .deb to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: dist/*.deb
+
+      # L'installateur Windows Inno Setup nécessite Windows + iscc.
+      # On le build sur windows-latest.
+  windows-installer:
+    name: Build Windows installer (.exe Inno Setup)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Install Inno Setup
+        # Inno Setup 6 est préinstallé sur les runners windows-latest GitHub.
+        # On vérifie juste sa présence.
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          (Get-Command iscc -ErrorAction SilentlyContinue).Path
+          if (Test-Path $iscc) { Write-Host "ISCC OK: $iscc" }
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.tag || github.ref_name }}"
+          $ver = $tag.TrimStart("v")
+          # Build binaire + VERSIONINFO.
+          $env:GOOS="windows"; $env:GOARCH="amd64"; $env:CGO_ENABLED="0"
+          go build -trimpath -ldflags="-s -w" -o faillefox.exe ./cmd/faillefox
+          # Compile l'installateur.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=$ver" deploy/windows/faillefox.iss
+          ls deploy/windows/Output/
+
+      - name: Upload installer to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: deploy/windows/Output/faillefox-setup-*.exe
