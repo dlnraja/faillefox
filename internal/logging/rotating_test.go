@@ -17,7 +17,7 @@ func TestRotatingLoggerWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	ev := core.Event{
 		ID:         "abc",
@@ -51,7 +51,7 @@ func TestRotatingLoggerRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	l.MaxBytes = 200 // seuil très bas pour forcer la rotation
 
 	for i := 0; i < 20; i++ {
