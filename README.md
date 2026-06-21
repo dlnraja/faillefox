@@ -3,10 +3,13 @@
 [![CI](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/ci.yml)
 [![Lint](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/lint.yml)
 [![Release](https://github.com/dlnraja/faillefox/actions/workflows/release.yml/badge.svg)](https://github.com/dlnraja/faillefox/releases)
+[![Latest release](https://img.shields.io/github/v/release/dlnraja/faillefox?include_prereleases&label=derni%C3%A8re%20release)](https://github.com/dlnraja/faillefox/releases/latest)
+[![Commits since last release](https://img.shields.io/github/commits-since/dlnraja/faillefox/latest?label=commits%20depuis%20derni%C3%A8re%20release)](https://github.com/dlnraja/faillefox/commits/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dlnraja/faillefox)](https://goreportcard.com/report/github.com/dlnraja/faillefox)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/plateformes-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS%20%C2%B7%20Android-success)](#-feuille-de-route)
+[![Platforms](https://img.shields.io/badge/plateformes-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS%20%C2%B7%20Android-success)](#-plateformes-supportées-v05)
+[![Auto-version](https://github.com/dlnraja/faillefox/actions/workflows/auto-version.yml/badge.svg)](https://github.com/dlnraja/faillefox/actions/workflows/auto-version.yml)
 
 > **Faillefox est un VRAI pare-feu gratuit, libre (GPL-3.0) et multiplateforme**
 > (Windows / Android / Linux), né en réaction à la **parodie**
@@ -14,7 +17,8 @@
 > télévisée. Ce dépôt fait l'inverse de la parodie : il construit un outil
 > de sécurité **réel**, transparent et open source.
 
-📖 **Documentation** : [Présentation](docs/presentation.md) · [Architecture](docs/design.md) ·
+📖 **Documentation** : [Présentation](docs/presentation.md) · [Architecture](docs/architecture.md) ·
+[Compilation](docs/build.md) · [Release](docs/release.md) ·
 [Android](docs/android.md) · [Antivirus & signature](docs/antivirus.md) ·
 [ClamAV](docs/clamav.md) · [Feuille de route](ROADMAP.md) ·
 [Changelog](CHANGELOG.md) · [Sécurité](SECURITY.md) · [Contribuer](CONTRIBUTING.md) ·
@@ -126,6 +130,26 @@ Puis ouvrez **http://127.0.0.1:8443** dans votre navigateur.
 > accessible depuis une autre machine. C'est une règle de sécurité
 > non négociable pour un pare-feu : son canal de contrôle ne doit pas être
 > joignable depuis le réseau.
+
+### Compilation avancée
+
+Build optimisé (binaire plus petit), cross-compilation pour d'autres OS,
+VERSIONINFO Windows, build Android — voir **[docs/build.md](docs/build.md)**.
+
+```bash
+# Binaire optimisé (~6,5 Mo au lieu de ~9 Mo)
+go build -trimpath -ldflags="-s -w" -o faillefox ./cmd/faillefox
+
+# Cross-compile pour Linux depuis Windows
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o faillefox-linux ./cmd/faillefox
+```
+
+### Releases automatiques
+
+Les releases sont **automatiques** : à chaque commit `feat:`/`fix:` sur
+master, un workflow calcule la nouvelle version, met à jour le CHANGELOG,
+crée le tag et publie la release multi-OS. Voir
+**[docs/release.md](docs/release.md)** pour le détail du pipeline.
 
 ### Options en ligne de commande
 

@@ -1,0 +1,152 @@
+# Auto-version : à chaque push sur master, calcule le prochain numéro de
+# version selon les conventional commits (feat→minor, fix→patch, breaking→major),
+# met à jour la version dans les fichiers (version_info.json, README), bump le
+# CHANGELOG, crée le tag et le pousse — ce qui déclenche release.yml.
+#
+# Conventional commits requis (vérifiés par le PR template) :
+#   feat: ...     -> bump MINOR  (ex: 0.5.0 -> 0.6.0)
+#   fix: ...      -> bump PATCH  (ex: 0.5.0 -> 0.5.1)
+#   feat!: / fix! -> bump MAJOR  (ex: 0.5.0 -> 1.0.0)
+#   docs:/chore:  -> pas de release
+#
+# Désactivé si le push est un tag (déjà une release) ou si le commit contient
+# [skip release].
+name: Auto-version
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Compute & push version tag
+    runs-on: ubuntu-latest
+    # On ignore les pushes faits par ce workflow lui-même (anti-boucle) et
+    # les commits marqués [skip release].
+    if: >-
+      !contains(github.event.head_commit.message, '[skip release]') &&
+      github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump from commits
+        id: bump
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Dernier tag: $LAST_TAG"
+          # Récupère les commits depuis le dernier tag.
+          LOGS=$(git log --format="%s" "${LAST_TAG}..HEAD" 2>/dev/null || echo "")
+          if [ -z "$LOGS" ]; then
+            echo "Aucun commit depuis $LAST_TAG, abort."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Parsing conventional commits.
+          BUMP="none"
+          if echo "$LOGS" | grep -qE "^[a-z]+(\(.*\))?!:"; then BUMP="major"; fi
+          if [ "$BUMP" = "none" ] && echo "$LOGS" | grep -qE "^feat(\(.*\))?:"; then BUMP="minor"; fi
+          if [ "$BUMP" = "none" ] && echo "$LOGS" | grep -qE "^fix(\(.*\))?:"; then BUMP="patch"; fi
+
+          if [ "$BUMP" = "none" ]; then
+            echo "Aucun commit feat/fix, pas de release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Calcule la nouvelle version depuis le dernier tag (format vX.Y.Z).
+          BASE="${LAST_TAG#v}"
+          MAJOR=$(echo "$BASE" | cut -d. -f1)
+          MINOR=$(echo "$BASE" | cut -d. -f2)
+          PATCH=$(echo "$BASE" | cut -d. -f3)
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "Bump: $BUMP -> nouvelle version: $NEW"
+          echo "new_tag=$NEW" >> "$GITHUB_OUTPUT"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Update version_info.json
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          NEW="${{ steps.bump.outputs.new_tag }}"
+          # new_tag = vX.Y.Z -> on extrait X.Y.Z
+          VER="${NEW#v}"
+          MAJOR=$(echo "$VER" | cut -d. -f1)
+          MINOR=$(echo "$VER" | cut -d. -f2)
+          PATCH=$(echo "$VER" | cut -d. -f3)
+          # Mise à jour de version_info.json via python (présent sur ubuntu-latest).
+          python3 - <<EOF
+          import json, sys
+          major, minor, patch = $MAJOR, $MINOR, $PATCH
+          with open("version_info.json") as f:
+              data = json.load(f)
+          data["FixedInfo"]["FileVersion"] = {"Major": major, "Minor": minor, "Patch": patch, "Build": 0}
+          data["FixedInfo"]["ProductVersion"] = {"Major": major, "Minor": minor, "Patch": patch, "Build": 0}
+          data["StringInfo"]["FileVersion"] = f"{major}.{minor}.{patch}.0"
+          data["StringInfo"]["ProductVersion"] = f"{major}.{minor}.{patch}.0"
+          with open("version_info.json", "w") as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+          print("version_info.json mis à jour vers", f"{major}.{minor}.{patch}.0")
+          EOF
+
+      - name: Append CHANGELOG entry
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          NEW="${{ steps.bump.outputs.new_tag }}"
+          # Construit une entrée de changelog à partir des commits feat/fix.
+          {
+            echo "## [$NEW] - $(date -u +%Y-%m-%d)"
+            echo ""
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            echo "### Ajouté"
+            git log --format="- %s" "${LAST_TAG}..HEAD" 2>/dev/null | grep -E "^feat" | sed 's/feat(\([^)]*\)):/\1:/' | sed 's/feat: //' || true
+            echo ""
+            echo "### Corrigé"
+            git log --format="- %s" "${LAST_TAG}..HEAD" 2>/dev/null | grep -E "^fix" | sed 's/fix(\([^)]*\)):/\1:/' | sed 's/fix: //' || true
+            echo ""
+          } > /tmp/new_entry.md
+          # Insertion juste après la ligne "[Non publié]".
+          python3 - <<EOF
+          with open("CHANGELOG.md") as f:
+              content = f.read()
+          with open("/tmp/new_entry.md") as f:
+              entry = f.read()
+          marker = "## [Non publié]"
+          idx = content.find(marker)
+          end = content.find("\n## ", idx + len(marker))
+          if end == -1:
+              content = content + entry
+          else:
+              content = content[:end] + entry + content[end:]
+          with open("CHANGELOG.md", "w") as f:
+              f.write(content)
+          EOF
+          cat CHANGELOG.md | head -30
+
+      - name: Commit version bump & changelog
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version_info.json CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.bump.outputs.new_tag }} [skip release]" || echo "Rien à committer"
+          git push origin master
+
+      - name: Create & push tag (déclenche release.yml)
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          NEW="${{ steps.bump.outputs.new_tag }}"
+          NOTES="Release automatique $NEW (bump: ${{ steps.bump.outputs.bump }}).
+          Généré par .github/workflows/auto-version.yml depuis les conventional commits."
+          git tag -a "$NEW" -m "$NOTES"
+          git push origin "$NEW"
