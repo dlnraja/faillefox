@@ -167,10 +167,8 @@ jobs:
       contents: write
 
   # Étape 3 : build l'APK Android auto-signé (en parallèle de la release).
-  # pkg/android est maintenant self-contained (aucune dépendance internal/*)
-  # donc gomobile bind fonctionne sans configuration supplémentaire.
   # NON BLOQUANT : si l'APK échoue (NDK, Gradle...), la release principale
-  # (binaires + installateur) n'est pas impactée. L'APK peut être build séparément.
+  # n'est pas impactée.
   android:
     name: Trigger Android APK build
     needs: bump
@@ -180,9 +178,12 @@ jobs:
       tag: ${{ needs.bump.outputs.new_tag }}
     permissions:
       contents: write
+    continue-on-error: true
 
   # Étape 4 : build les binaires GUI desktop (Fyne, CGO) pour Win/Linux/macOS.
   # Binaire séparé du démon (faillefox-gui) car Fyne nécessite CGO + OpenGL.
+  # NON BLOQUANT : Fyne peut échouer (dépendances OpenGL/X11), la release
+  # principale (démon + APK + installateur) n'est pas impactée.
   desktop:
     name: Trigger Desktop GUI build
     needs: bump
@@ -192,4 +193,5 @@ jobs:
       tag: ${{ needs.bump.outputs.new_tag }}
     permissions:
       contents: write
+    continue-on-error: true
 
