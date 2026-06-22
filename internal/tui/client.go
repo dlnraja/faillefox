@@ -48,7 +48,7 @@ func (c *Client) Run() error {
 		fmt.Println("  Actions: [r] Règles  [l] Journal  [s] Sécurité  [p] Paramètres  [q] Quitter")
 		fmt.Print("  > ")
 		var key string
-		fmt.Scanln(&key)
+		_, _ = fmt.Scanln(&key)
 		switch strings.ToLower(key) {
 		case "q", "quit", "exit":
 			fmt.Println("  Au revoir 👋")
@@ -128,7 +128,7 @@ func (c *Client) viewRules() {
 	}
 	fmt.Println("\n  [Entrée] Retour")
 	var skip string
-	fmt.Scanln(&skip)
+	_, _ = fmt.Scanln(&skip)
 }
 
 // viewLogs affiche les derniers événements du journal.
@@ -157,7 +157,7 @@ func (c *Client) viewLogs() {
 	}
 	fmt.Println("\n  [Entrée] Retour")
 	var skip string
-	fmt.Scanln(&skip)
+	_, _ = fmt.Scanln(&skip)
 }
 
 // viewSecurity affiche le centre de sécurité en détail.
@@ -176,11 +176,12 @@ func (c *Client) viewSecurity() {
 			name, _ := pm["name"].(string)
 			statusStr, _ := pm["status"].(string)
 			col := green
-			if statusStr == "inactive" {
+			switch statusStr {
+			case "inactive":
 				col = faint
-			} else if statusStr == "limited" {
+			case "limited":
 				col = yellow
-			} else if statusStr == "error" {
+			case "error":
 				col = red
 			}
 			fmt.Printf("  %s  %-30s %s%s%s\n", icon, name, col, statusStr, reset)
@@ -188,7 +189,7 @@ func (c *Client) viewSecurity() {
 	}
 	fmt.Println("\n  [Entrée] Retour")
 	var skip string
-	fmt.Scanln(&skip)
+	_, _ = fmt.Scanln(&skip)
 }
 
 // viewSettings affiche les paramètres.
@@ -223,7 +224,7 @@ func (c *Client) viewSettings() {
 	fmt.Println("\n  (Modifications via panneau web ou API /api/settings)")
 	fmt.Println("  [Entrée] Retour")
 	var skip string
-	fmt.Scanln(&skip)
+	_, _ = fmt.Scanln(&skip)
 }
 
 // ---- helpers HTTP --------------------------------------------------------
