@@ -79,7 +79,9 @@ class FaillefoxVpnService : VpnService() {
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Faillefox actif")
             .setContentText("Pare-feu en cours d'exécution")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            // Icône système par défaut d'Android (on n'embarque pas de mipmap
+            // pour rester léger ; une vraie icône sera ajoutée plus tard).
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pi)
             .build()
     }

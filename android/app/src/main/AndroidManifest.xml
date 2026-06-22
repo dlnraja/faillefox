@@ -12,7 +12,6 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
         android:label="Faillefox"
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight">
