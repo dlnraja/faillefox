@@ -1,6 +1,0 @@
-version: "2"
-
-issues:
-  exclude-dirs:
-    - internal/desktop
-    - cmd/faillefox-gui
