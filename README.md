@@ -92,6 +92,16 @@ Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
   maison (dangereux — faux positifs).
 - 🎮 **Gamification** (v0.7) — points, badges, streak de jours protégés pour
   encourager la consultation régulière. Activée par défaut.
+- 🎨 **Thèmes UI** (v0.10) — clair, sombre, auto (suit la préférence système),
+  avec persistance.
+- 🔄 **Scheduler unifié** (v0.10) — rafraîchit automatiquement TOUS les
+  référentiels (DNS 6h, CVE 6h, threat intel 3h, YARA 24h).
+- 🔐 **Anti-ransomware** (v0.11-v0.12) — surveillance active des dossiers
+  sensibles via fsnotify : ransom notes, extensions chiffrées, rate-limiting.
+  Voir [docs/antiransom.md](docs/antiransom.md).
+- ⚙️ **Panneau de paramètres** (v0.12) — mode simple (réglages essentiels) +
+  mode avancé (chaque module), profil réseau, thème, notifications.
+- 🛡️ **Revue sécurité continue** (v0.12) — analyse gosec sur chaque PR.
 
 Le tout pilotable depuis un **panneau web local** ouvert dans votre
 navigateur, **jamais exposé sur le réseau**.
@@ -348,7 +358,7 @@ Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
 - **Scanner ClamAV** : intégration du seul moteur AV open source (limité vs
   solutions commerciales — voir [docs/clamav.md](docs/clamav.md))
 
-### ✅ v0.4 — Automatisation autonome (actuelle)
+### ✅ v0.4 — Automatisation autonome
 - **Auto-update activé par défaut** : listes DNS + CVE téléchargées au
   démarrage puis rafraîchies toutes les **6h** en arrière-plan
 - **Mises à jour des signatures ClamAV** via `freshclam` intégré (option
@@ -357,13 +367,39 @@ Cœur Go, API REST + SSE, UI web, pilote stub, CI multi-OS, release.
   déclenchant une release toute seule
 - **Dependabot** : les dépendances Go (`miekg/dns`…) et les GitHub Actions
   sont mises à jour par PR automatiques
-- Nouvelle observabilité : `updater.Status()` (dernier fetch, nb domaines…)
 
-### 🔜 v0.5 — Android complet + UI de scan
-Forward tun2socks, filtrage par UID, UI Compose détaillée, UI de scan ClamAV,
-F-Droid.
+### ✅ v0.5 — UI complète (6 onglets)
+Les modules v0.3/v0.4 enfin visibles dans le tableau de bord (Auto-update,
+CVE, Scan ClamAV).
 
-### 🔜 v0.6 — Pilote WFP avancé (Windows)
+### ✅ v0.6 — Plateformes natives
+Service Windows natif, systemd Linux, launchd macOS, tunnel Android.
+
+### ✅ v0.7 — Threat intelligence + gamification
+Agrégateur IOC multi-sources, corrélateur d'alertes, scanner YARA, gamification.
+
+### ✅ v0.8 — Installateurs natifs
+Installateur Windows Inno Setup, paquet .deb, formule Homebrew.
+
+### ✅ v0.9 — Centre de sécurité unifié
+Vue synthétique de toutes les protections (13 couches suivies).
+
+### ✅ v0.10 — Thèmes UI + scheduler unifié
+Thèmes clair/sombre/auto, rafraîchissement autonome de tous les référentiels.
+
+### ✅ v0.11 — Anti-ransomware (détection)
+Détection comportementale : ransom notes, extensions chiffrées, rate-limiting.
+
+### ✅ v0.12 — Anti-ransomware actif + APK + Paramètres + gosec (actuelle)
+- **Anti-ransomware actif** : surveillance fsnotify temps réel des dossiers sensibles
+- **APK Android** auto-signé dans le CI
+- **Panneau de paramètres** : mode simple + avancé (18 réglages persistés)
+- **Revue sécurité continue** : analyse gosec sur chaque PR
+
+### 🔜 v0.13 — Android complet
+Forward tun2socks, filtrage par UID, UI Compose détaillée, F-Droid.
+
+### 🔜 v0.14 — Pilote WFP avancé (Windows)
 Callouts WFP mode utilisateur, association PID↔connexion, mode `ask` prompt.
 
 ### 🔜 v1.0 — Stabilisation & grand public

@@ -51,10 +51,8 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
-            ndk;26.3.11579264
+          # Packages sur une seule ligne (le YAML multiligne cassait sdkmanager).
+          packages: "platforms;android-34 build-tools;34.0.0 ndk;26.3.11579264"
 
       - name: Install gomobile
         run: |
