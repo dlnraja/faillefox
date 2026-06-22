@@ -13,12 +13,18 @@ package tools
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
 	"time"
 )
+
+// readRandom est un wrapper sur crypto/rand.Read (isolé pour les tests).
+func readRandom(b []byte) (int, error) {
+	return rand.Read(b)
+}
 
 // ---- PortScanner ---------------------------------------------------------
 
@@ -224,4 +230,51 @@ func (p *PasswordChecker) Evaluate(password string) PasswordStrength {
 		Entropy:  entropy,
 		Feedback: feedback,
 	}
+}
+
+// ---- PasswordGenerator ---------------------------------------------------
+
+// PasswordGenerator génère des mots de passe aléatoires forts.
+type PasswordGenerator struct{}
+
+// NewPasswordGenerator crée un générateur.
+func NewPasswordGenerator() *PasswordGenerator { return &PasswordGenerator{} }
+
+// Generate produit un mot de passe aléatoire de longueur donnée, incluant
+// majuscules, minuscules, chiffres et symboles. Utilise crypto/rand.
+func (g *PasswordGenerator) Generate(length int) (string, error) {
+	if length < 8 {
+		length = 16 // minimum raisonnable
+	}
+	if length > 256 {
+		length = 256 // plafond anti-abus
+	}
+	const lower = "abcdefghijklmnopqrstuvwxyz"
+	const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const digits = "0123456789"
+	const symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+	pool := lower + upper + digits + symbols
+
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		// crypto/rand pour l'imprévisibilité.
+		idx, err := randInt(len(pool))
+		if err != nil {
+			return "", err
+		}
+		result[i] = pool[idx]
+	}
+	return string(result), nil
+}
+
+// randInt renvoie un entier aléatoire dans [0, max) utilisant crypto/rand.
+func randInt(max int) (int, error) {
+	if max <= 0 {
+		return 0, fmt.Errorf("max doit être positif")
+	}
+	buf := make([]byte, 1)
+	if _, err := readRandom(buf); err != nil {
+		return 0, err
+	}
+	return int(buf[0]) % max, nil
 }

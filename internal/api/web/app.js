@@ -3,6 +3,31 @@
 
 const API = ""; // même origine (servi par le démon Go)
 
+// ---- token d'authentification (récupéré depuis l'URL ou sessionStorage) ---
+// Au premier lancement, le token est dans l'URL (?token=xxx). On le stocke
+// en sessionStorage puis on l'envoie dans toutes les requêtes.
+function getAuthToken() {
+  const fromStorage = sessionStorage.getItem("faillefox-token");
+  if (fromStorage) return fromStorage;
+  const params = new URLSearchParams(window.location.search);
+  const fromURL = params.get("token");
+  if (fromURL) {
+    sessionStorage.setItem("faillefox-token", fromURL);
+    // Nettoie l'URL ( retire le paramètre token pour ne pas fuiter dans l'historique).
+    params.delete("token");
+    const clean = params.toString();
+    window.history.replaceState({}, "", clean ? "?" + clean : window.location.pathname);
+    return fromURL;
+  }
+  return null;
+}
+const AUTH_TOKEN = getAuthToken();
+function authHeaders(extra = {}) {
+  const h = { ...extra };
+  if (AUTH_TOKEN) h["Authorization"] = "Bearer " + AUTH_TOKEN;
+  return h;
+}
+
 // ---- thème (clair/sombre/auto) — appliqué le plus tôt possible -----------
 // Ordre de priorité : localStorage > thème système. Bascule au clic du bouton.
 const THEMES = ["dark", "light", "auto"]; // ordre de bascule cyclique
@@ -45,14 +70,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ---- utilitaires ----------------------------------------------------------
 async function getJSON(path) {
-  const r = await fetch(API + path);
+  const r = await fetch(API + path, { headers: authHeaders() });
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   return r.json();
 }
 async function postJSON(path, body) {
   const r = await fetch(API + path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body || {}),
   });
   if (!r.ok && r.status !== 204) throw new Error(`${path}: ${r.status}`);
@@ -556,6 +581,19 @@ document.getElementById("pw-form")?.addEventListener("submit", async (e) => {
   } catch (err) { el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`; }
   // Sécurité : on vide le champ immédiatement.
   e.target.reset();
+});
+
+document.getElementById("btn-genpw")?.addEventListener("click", async () => {
+  const el = document.getElementById("genpw-result");
+  el.innerHTML = "<span class='hint'>Génération…</span>";
+  try {
+    const r = await fetch(API + "/api/tools/gen-password?length=20", { headers: authHeaders() });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    el.innerHTML = `<div class="kv"><div><span class="k">Mot de passe généré :</span></div>` +
+      `<div style="font-family:monospace;font-size:15px;word-break:break-all;margin:6px 0">${esc(data.password)}</div>` +
+      `<button onclick="navigator.clipboard.writeText('${esc(data.password)}');this.textContent='✓ Copié'" class="primary-btn">📋 Copier</button></div>`;
+  } catch (err) { el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`; }
 });
 
 // ---- bootstrap ------------------------------------------------------------

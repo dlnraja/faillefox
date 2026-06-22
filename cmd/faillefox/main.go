@@ -25,6 +25,7 @@ import (
 
 	"github.com/dlnraja/faillefox/internal/api"
 	"github.com/dlnraja/faillefox/internal/antiransom"
+	"github.com/dlnraja/faillefox/internal/auth"
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/correlate"
@@ -364,6 +365,18 @@ func main() {
 	server.SetUpdater(upd)
 	server.SetFeed(feed)
 	server.SetScanner(av)
+
+	// 9-pre. Token d'authentification v0.15 — anti-pilotage par malware local.
+	// Généré au démarrage et stocké dans ~/.faillefox/token (perms 0600).
+	// Affiché dans la console pour que l'utilisateur puisse l'utiliser.
+	authToken, err := auth.LoadOrCreate(filepath.Join(*dataDir, "token"))
+	if err != nil {
+		log.Printf("[warn] token auth: %v (API sans auth)", err)
+	} else {
+		server.SetToken(authToken)
+		log.Printf("[auth] token API: %s", authToken.Value())
+		log.Printf("[auth] URL d'accès UI: http://127.0.0.1:%d/?token=%s", *port, authToken.Value())
+	}
 
 	// 9b. Centre de sécurité v0.9 : vue unifiée de toutes les protections.
 	//     On déclare le statut de chaque couche selon ce qui est actif.

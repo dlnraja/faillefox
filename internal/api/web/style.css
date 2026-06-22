@@ -309,4 +309,29 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 28px 60px; }
 #tab-tools h3 { font-size: 15px; margin-top: 0; }
 #tab-tools .hint { margin-bottom: 8px; }
 
+/* ---- Responsive mobile ---- */
+@media (max-width: 768px) {
+  .topbar { flex-direction: column; gap: 10px; padding: 12px; }
+  .brand h1 { font-size: 18px; }
+  .tabs { flex-wrap: wrap; padding: 0 12px; }
+  .tab { padding: 10px 12px; font-size: 12px; }
+  main { padding: 16px 12px 40px; }
+  .rule-form { grid-template-columns: 1fr; }
+  .sec-grid { grid-template-columns: 1fr; }
+  .set-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .logs { font-size: 11px; max-height: 320px; }
+  .sec-score .big { font-size: 36px; }
+}
+
+/* ---- Accessibilité ---- */
+.tab:focus-visible, .switch input:focus-visible + .slider,
+.primary-btn:focus-visible, .set-select:focus-visible,
+.theme-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
 

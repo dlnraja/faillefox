@@ -175,8 +175,8 @@
       </div>
 
       <div class="card">
-        <h3>🔑 Vérificateur de mot de passe</h3>
-        <p class="hint">Évalue la force d'un mot de passe. <strong>Le mot de passe n'est jamais stocké.</strong></p>
+        <h3>🔑 Vérificateur & générateur de mot de passe</h3>
+        <p class="hint">Évalue la force d'un mot de passe, ou générez-en un fort. <strong>Jamais stocké.</strong></p>
         <form id="pw-form" class="rule-form">
           <label>Mot de passe à tester
             <input type="password" name="password" placeholder="Tapez un mot de passe" required />
@@ -184,6 +184,8 @@
           <button type="submit" class="primary">Évaluer</button>
         </form>
         <div id="pw-result"></div>
+        <button id="btn-genpw" class="primary-btn" style="margin-top:12px">🎲 Générer un mot de passe fort</button>
+        <div id="genpw-result" style="margin-top:8px"></div>
       </div>
     </section>
 

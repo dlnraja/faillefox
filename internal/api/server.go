@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dlnraja/faillefox/internal/auth"
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/cvefeed"
@@ -56,6 +57,9 @@ type Server struct {
 
 	// Paramètres utilisateur v0.12 — mode simple/avancé + modules.
 	settings *settings.Settings
+
+	// Token d'authentification v0.15 — anti-pilotage par malware local.
+	token *auth.Token
 }
 
 // SetUpdater branche l'updater pour l'endpoint /api/updater.
@@ -75,6 +79,9 @@ func (s *Server) SetScheduler(sch *refresher.Scheduler) { s.scheduler = sch }
 
 // SetSettings branche les paramètres utilisateur pour /api/settings.
 func (s *Server) SetSettings(st *settings.Settings) { s.settings = st }
+
+// SetToken branche le token d'authentification (anti-pilotage malware).
+func (s *Server) SetToken(t *auth.Token) { s.token = t }
 
 // New crée un serveur lié à 127.0.0.1:port.
 func New(engine *core.Engine, driver core.Driver, port int) *Server {
@@ -97,6 +104,7 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/tools/ports", s.handlePortScan)      // scanner de ports
 	mux.HandleFunc("/api/tools/dns-leak", s.handleDNSLeak)    // test fuite DNS
 	mux.HandleFunc("/api/tools/password", s.handlePassword)   // vérificateur mot de passe
+	mux.HandleFunc("/api/tools/gen-password", s.handleGenPassword) // générateur mot de passe
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
@@ -106,11 +114,21 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	//   1. LoopbackOnly : refuse toute IP non-loopback (même si bind erroné)
 	//   2. SecurityHeaders : CSP stricte + durcissement
 	//   3. RateLimiter : anti-abus (120 req/min, généreux pour l'UI)
+	//   4. Auth : token Bearer requis pour toute mutation (anti-pilotage
+	//      par un malware local qui désactiverait les protections)
 	rateLimiter := middleware.NewRateLimiter(120, time.Minute)
 	var handler http.Handler = mux
 	handler = middleware.SecurityHeaders(handler)
 	handler = middleware.LoopbackOnly(handler)
 	handler = rateLimiter.Middleware(handler)
+	if s.token != nil {
+		readOnly := map[string]bool{
+			"/api/status": true, "/api/apps": true, "/api/security-center": true,
+			"/api/themes": true, "/api/refresh-status": true, "/api/updater": true,
+			"/api/tools/ports": true, "/api/tools/dns-leak": true,
+		}
+		handler = auth.Middleware(s.token, readOnly)(handler)
+	}
 
 	s.httpSrv = &http.Server{
 		Addr:              fmt.Sprintf("127.0.0.1:%d", port),
@@ -468,6 +486,24 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 	strength := checker.Evaluate(body.Password)
 	// On ne renvoie JAMAIS le mot de passe dans la réponse.
 	writeJSON(w, strength)
+}
+
+// handleGenPassword génère un mot de passe fort aléatoire.
+// Sécurité : généré via crypto/rand, jamais stocké.
+func (s *Server) handleGenPassword(w http.ResponseWriter, r *http.Request) {
+	length := 16 // défaut
+	if l := r.URL.Query().Get("length"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n >= 8 && n <= 128 {
+			length = n
+		}
+	}
+	gen := tools.NewPasswordGenerator()
+	pw, err := gen.Generate(length)
+	if err != nil {
+		http.Error(w, "génération échouée: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]any{"password": pw, "length": length})
 }
 
 // ---- helpers --------------------------------------------------------------
