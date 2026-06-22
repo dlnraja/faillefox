@@ -53,10 +53,10 @@ class MainActivity : AppCompatActivity() {
     private fun updateUI(toggle: Button, status: TextView) {
         if (vpnActive) {
             toggle.text = getString(R.string.stop)
-            status.text = getString(R.string.protected)
+            status.text = getString(R.string.shield_on)
         } else {
             toggle.text = getString(R.string.start)
-            status.text = getString(R.string.not_protected)
+            status.text = getString(R.string.shield_off)
         }
     }
 

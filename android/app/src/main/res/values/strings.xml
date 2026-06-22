@@ -3,6 +3,6 @@
     <string name="app_name">Faillefox</string>
     <string name="start">Activer le pare-feu</string>
     <string name="stop">Désactiver</string>
-    <string name="protected">🦊 Protégé</string>
-    <string name="not_protected">Non protégé</string>
+    <string name="shield_on">🦊 Protégé</string>
+    <string name="shield_off">Non protégé</string>
 </resources>
