@@ -41,6 +41,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/securitycenter"
 	"github.com/dlnraja/faillefox/internal/settings"
 	"github.com/dlnraja/faillefox/internal/threatintel"
+	"github.com/dlnraja/faillefox/internal/tui"
 	"github.com/dlnraja/faillefox/internal/updater"
 	"github.com/dlnraja/faillefox/internal/yarascan"
 )
@@ -76,6 +77,9 @@ func main() {
 		yaraRulesArg  = flag.String("yara-rules", "", "fichier de règles YARA publiques à charger (scan simplifié)")
 		gameOn        = flag.Bool("gamification", true, "active la gamification (points, badges, streak) — activé par défaut")
 		antiransomOn  = flag.Bool("antiransom", false, "active la surveillance anti-ransomware (dossiers sensibles + extensions)")
+
+		// --- v0.13 : interface client TUI (terminal plein écran) ---
+		tuiMode = flag.Bool("tui", false, "lance l'interface terminal plein écran (client du démon)")
 	)
 	flag.Parse()
 
@@ -113,6 +117,16 @@ func main() {
 		fmt.Println("Pilotes disponibles dans ce binaire:")
 		for _, d := range core.AvailableDrivers() {
 			fmt.Println("  - " + d)
+		}
+		return
+	}
+
+	// Mode TUI : interface terminal plein écran (client du démon). Ne démarre
+	// PAS le démon — il doit tourner séparément (ex: en service Windows).
+	if *tuiMode {
+		client := tui.New(*port)
+		if err := client.Run(); err != nil {
+			log.Fatalf("[fatal] TUI: %v", err)
 		}
 		return
 	}

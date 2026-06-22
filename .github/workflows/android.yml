@@ -62,8 +62,14 @@ jobs:
       - name: Build Go AAR (bindings moteur)
         run: |
           mkdir -p android/app/libs
-          gomobile bind -target=android/amd64,android/arm64 \
-            -o android/app/libs/faillefox.aar ./pkg/android
+          # Verbeux pour diagnostiquer les erreurs gomobile.
+          set -x
+          gomobile bind -v -target=android/amd64,android/arm64 \
+            -o android/app/libs/faillefox.aar ./pkg/android 2>&1 || {
+            echo "==> gomobile bind échoué, logs ci-dessus"
+            exit 1
+          }
+          ls -la android/app/libs/faillefox.aar
 
       - name: Configure keystore (release) si secret présent
         env:

@@ -103,8 +103,16 @@ Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
   mode avancé (chaque module), profil réseau, thème, notifications.
 - 🛡️ **Revue sécurité continue** (v0.12) — analyse gosec sur chaque PR.
 
-Le tout pilotable depuis un **panneau web local** ouvert dans votre
-navigateur, **jamais exposé sur le réseau**.
+Le tout pilotable depuis **plusieurs interfaces clientes** :
+- 🌐 **Panneau web local** (http://127.0.0.1:8443) — 8 onglets, jamais exposé au réseau
+- 🖥️ **TUI terminal** (`faillefox -tui`) — interface plein écran façon `htop`, compatible Windows/macOS/Linux/SSH
+- 📱 **App Android** (APK auto-signé en CI) — interrupteur + VpnService
+- 🔧 **CLI** (`faillefox -list-drivers`, `-winsvc install`, etc.)
+
+> Le panneau de contrôle n'écoute **que** sur `127.0.0.1`. Il n'est jamais
+> accessible depuis une autre machine. C'est une règle de sécurité
+> non négociable pour un pare-feu : son canal de contrôle ne doit pas être
+> joignable depuis le réseau.
 
 > ⚠️ **Honnêteté sur le périmètre** : Faillefox est un **bouclier réseau
 > et DNS + CVE + scan à la demande**. Ce n'est **pas** un antivirus temps
