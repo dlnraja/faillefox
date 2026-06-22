@@ -74,9 +74,11 @@ func TestRateLimiterDifferentIPs(t *testing.T) {
 	if rl.isRateLimited("1.1.1.1") {
 		t.Error("1ère IP ne devrait pas être limitée")
 	}
-	if rl.isRateLimited("1.1.1.1") {
-		// OK, 2e fois même IP = limitée
+	// 2e requête même IP = limitée (comportement attendu, max=1).
+	if !rl.isRateLimited("1.1.1.1") {
+		t.Error("2e requête même IP devrait être limitée (max=1)")
 	}
+	// Une IP différente ne doit pas être affectée.
 	if rl.isRateLimited("2.2.2.2") {
 		t.Error("2e IP différente ne devrait pas être limitée")
 	}
