@@ -178,12 +178,11 @@ jobs:
       tag: ${{ needs.bump.outputs.new_tag }}
     permissions:
       contents: write
-    continue-on-error: true
 
   # Étape 4 : build les binaires GUI desktop (Fyne, CGO) pour Win/Linux/macOS.
-  # Binaire séparé du démon (faillefox-gui) car Fyne nécessite CGO + OpenGL.
   # NON BLOQUANT : Fyne peut échouer (dépendances OpenGL/X11), la release
-  # principale (démon + APK + installateur) n'est pas impactée.
+  # principale (démon + installateur) n'est pas impactée. Le job release ne
+  # dépend PAS de android/desktop, donc leur échec ne bloque pas la release.
   desktop:
     name: Trigger Desktop GUI build
     needs: bump
@@ -193,5 +192,4 @@ jobs:
       tag: ${{ needs.bump.outputs.new_tag }}
     permissions:
       contents: write
-    continue-on-error: true
 
