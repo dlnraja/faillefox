@@ -1,17 +1,6 @@
-# Configuration golangci-lint v2 pour Faillefox.
-# Exclut le GUI desktop (Fyne = CGO + OpenGL non disponibles sur le runner lint).
 version: "2"
 
-run:
-  timeout: 5m
-  # Exclut les packages qui nécessitent CGO/Fyne (non disponibles en CI lint).
-  modules-download-mode: readonly
-
 issues:
-  # Exclut les répertoires GUI desktop du lint.
   exclude-dirs:
     - internal/desktop
     - cmd/faillefox-gui
-
-linters:
-  default: standard
