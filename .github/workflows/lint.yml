@@ -32,5 +32,6 @@ jobs:
           # compilée avec Go 1.26). Les versions v1.x et v2.x anciennes
           # (compilées avec Go <= 1.25) refusent de tourner sur notre module.
           version: v2.12.1
-          # On exclut le GUI desktop (Fyne = CGO + OpenGL non dispo sur le runner lint).
-          args: --timeout=5m --skip-dirs="internal/desktop|cmd/faillefox-gui"
+          # La config (.golangci.yml) exclut déjà internal/desktop et cmd/faillefox-gui
+          # car Fyne nécessite CGO + OpenGL non disponibles sur le runner lint.
+          args: --timeout=5m
