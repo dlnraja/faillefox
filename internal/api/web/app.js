@@ -3,6 +3,46 @@
 
 const API = ""; // même origine (servi par le démon Go)
 
+// ---- thème (clair/sombre/auto) — appliqué le plus tôt possible -----------
+// Ordre de priorité : localStorage > thème système. Bascule au clic du bouton.
+const THEMES = ["dark", "light", "auto"]; // ordre de bascule cyclique
+const THEME_ICONS = { dark: "🌙", light: "☀️", auto: "🖥️" };
+
+function applyTheme(theme) {
+  let effective = theme;
+  if (theme === "auto") {
+    effective = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  document.documentElement.setAttribute("data-theme", effective);
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = THEME_ICONS[theme] || "🌙";
+}
+
+function currentTheme() {
+  return localStorage.getItem("faillefox-theme") || "dark";
+}
+
+function cycleTheme() {
+  const cur = currentTheme();
+  const idx = THEMES.indexOf(cur);
+  const next = THEMES[(idx + 1) % THEMES.length];
+  localStorage.setItem("faillefox-theme", next);
+  applyTheme(next);
+}
+
+// Applique le thème immédiatement (évite le flash de couleur au chargement).
+applyTheme(currentTheme());
+// Si en mode auto, on suit les changements de préférence système en direct.
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (currentTheme() === "auto") applyTheme("auto");
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.addEventListener("click", cycleTheme);
+  applyTheme(currentTheme()); // met à jour l'icône du bouton
+});
+
 // ---- utilitaires ----------------------------------------------------------
 async function getJSON(path) {
   const r = await fetch(API + path);

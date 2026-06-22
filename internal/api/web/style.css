@@ -1,3 +1,4 @@
+/* Thème sombre (défaut) */
 :root {
   --bg: #0f1115;
   --bg-card: #171a21;
@@ -12,6 +13,31 @@
   --border: #2a2f3a;
   --radius: 10px;
 }
+
+/* Thème clair : activé via [data-theme="light"] sur <html>.
+   En mode "auto", le JS bascule selon prefers-color-scheme. */
+:root[data-theme="light"] {
+  --bg: #f4f6f9;
+  --bg-card: #ffffff;
+  --bg-card-2: #eef1f6;
+  --fg: #1a1d26;
+  --fg-dim: #5a6478;
+  --accent: #e0640f;
+  --accent-2: #c75a0d;
+  --ok: #1a9b54;
+  --danger: #c0392b;
+  --warn: #c5900a;
+  --border: #d4dae3;
+}
+
+/* Bouton bascule de thème */
+.theme-btn {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--fg);
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  font-size: 15px; display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 8px; padding: 0;
+}
+.theme-btn:hover { border-color: var(--accent); }
 
 * { box-sizing: border-box; }
 

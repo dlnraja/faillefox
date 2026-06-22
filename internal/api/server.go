@@ -22,7 +22,9 @@ import (
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/cvefeed"
+	"github.com/dlnraja/faillefox/internal/refresher"
 	"github.com/dlnraja/faillefox/internal/securitycenter"
+	"github.com/dlnraja/faillefox/internal/themes"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
 
@@ -45,6 +47,9 @@ type Server struct {
 
 	// Centre de sécurité v0.9 — vue unifiée de toutes les protections.
 	secCenter *securitycenter.Center
+
+	// Scheduler de rafraîchissement v0.10 — état des référentiels.
+	scheduler *refresher.Scheduler
 }
 
 // SetUpdater branche l'updater pour l'endpoint /api/updater.
@@ -58,6 +63,9 @@ func (s *Server) SetFeed(f *cvefeed.Feed) { s.feed = f }
 
 // SetSecurityCenter branche le centre de sécurité pour /api/security-center.
 func (s *Server) SetSecurityCenter(c *securitycenter.Center) { s.secCenter = c }
+
+// SetScheduler branche le scheduler de rafraîchissement pour /api/refresh-status.
+func (s *Server) SetScheduler(sch *refresher.Scheduler) { s.scheduler = sch }
 
 // New crée un serveur lié à 127.0.0.1:port.
 func New(engine *core.Engine, driver core.Driver, port int) *Server {
@@ -74,6 +82,8 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/scan", s.handleScan)              // scan ClamAV
 	mux.HandleFunc("/api/cve", s.handleCVE)                // alertes CVE
 	mux.HandleFunc("/api/security-center", s.handleSecCenter) // vue unifiée protections
+	mux.HandleFunc("/api/themes", s.handleThemes)             // thèmes UI disponibles
+	mux.HandleFunc("/api/refresh-status", s.handleRefresh)    // état du scheduler
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
@@ -337,6 +347,27 @@ func (s *Server) handleSecCenter(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"summary":     s.secCenter.GetSummary(),
 		"protections": s.secCenter.States(),
+	})
+}
+
+// handleThemes expose la liste des thèmes UI disponibles.
+func (s *Server) handleThemes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]any{
+		"available": themes.List(),
+		"default":   themes.Default,
+	})
+}
+
+// handleRefresh expose l'état du scheduler de rafraîchissement (quand chaque
+// référentiel a été rafraîchi pour la dernière fois, prochain échéance, etc.).
+func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	if s.scheduler == nil {
+		writeJSON(w, map[string]any{"enabled": false, "sources": []any{}})
+		return
+	}
+	writeJSON(w, map[string]any{
+		"enabled": true,
+		"sources": s.scheduler.Status(),
 	})
 }
 

@@ -36,6 +36,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/gamification"
 	"github.com/dlnraja/faillefox/internal/logging"
 	"github.com/dlnraja/faillefox/internal/platform/winsvc"
+	"github.com/dlnraja/faillefox/internal/refresher"
 	"github.com/dlnraja/faillefox/internal/securitycenter"
 	"github.com/dlnraja/faillefox/internal/threatintel"
 	"github.com/dlnraja/faillefox/internal/updater"
@@ -163,11 +164,17 @@ func main() {
 	//     rafraîchit toutes les `updateEvery` (6h par défaut). Le fetch est
 	//     non bloquant (goroutine dédiée), le démon répond immédiatement.
 	var upd *updater.Updater
+	// Scheduler unifié v0.10 : orchestre le rafraîchissement de TOUS les
+	// référentiels (DNS, CVE, threat intel, YARA) à leur cadence optimale.
+	sched := refresher.New()
 	if !*noAutoUpdate {
 		upd = updater.New(bl)
 		upd.SetUpdateEvery(*updateEvery)
-		go upd.Start(context.Background())
-		log.Printf("[main] auto-update activé: sources publiques DNS, rafraîchi toutes les %s", *updateEvery)
+		// Source DNS : on délègue à l'updater existant (qui peuple la blocklist).
+		sched.Register(refresher.SrcDNS, func(ctx context.Context) (int, error) {
+			return upd.FetchOnce(ctx)
+		}, *updateEvery)
+		log.Printf("[main] auto-update DNS activé: rafraîchi toutes les %s", *updateEvery)
 	} else {
 		log.Printf("[main] auto-update DÉSACTIVÉ (-no-autoupdate)")
 	}
@@ -191,12 +198,14 @@ func main() {
 	var feed *cvefeed.Feed
 	if *cveEnabled {
 		feed = cvefeed.New()
-		go func() {
-			if err := feed.RefreshAll(context.Background()); err != nil {
-				log.Printf("[warn] veille CVE: %v", err)
+		// Source CVE : rafraîchie toutes les 6h (NVD publie en continu).
+		sched.Register(refresher.SrcCVE, func(ctx context.Context) (int, error) {
+			if err := feed.RefreshAll(ctx); err != nil {
+				return 0, err
 			}
-		}()
-		log.Printf("[main] veille CVE activée (base NVD officielle, gratuite)")
+			return 1, nil // 1 = index reconstruit
+		}, 6*time.Hour)
+		log.Printf("[main] veille CVE activée (base NVD, rafraîchie toutes les 6h)")
 	}
 
 	// 5e. Scanner ClamAV : seul moteur AV open source, mais LIMITÉ vs les
@@ -226,16 +235,13 @@ func main() {
 	var correlator *correlate.Correlator
 	if *threatIntelOn {
 		aggregator = threatintel.New()
-		go func() {
-			if n, err := aggregator.FetchAll(context.Background()); err != nil {
-				log.Printf("[warn] threat intel: %v", err)
-			} else {
-				log.Printf("[main] threat intel: %d IOC agrégés", n)
-			}
-		}()
+		// Source threat intel : rafraîchie toutes les 3h (IOC APT bougent vite).
+		sched.Register(refresher.SrcThreat, func(ctx context.Context) (int, error) {
+			return aggregator.FetchAll(ctx)
+		}, 3*time.Hour)
 		correlator = correlate.New(aggregator)
 		correlator.SetProfile(p)
-		log.Printf("[main] threat intel activé (Abuse.ch + AlienVault OTX, fetch auto)")
+		log.Printf("[main] threat intel activé (Abuse.ch + OTX, rafraîchi toutes les 3h)")
 	}
 
 	// 5h. Scanner YARA : charge des règles publiques (chargement uniquement,
@@ -247,7 +253,21 @@ func main() {
 			log.Printf("[warn] YARA rules: %v", err)
 		} else {
 			log.Printf("[main] scanner YARA activé: %d règle(s) chargée(s) depuis %s", n, *yaraRulesArg)
+			// Source YARA : rechargement toutes les 24h (règles publiques,
+			// moins volatiles que les IOC).
+			rulesPath := *yaraRulesArg
+			sched.Register(refresher.SrcYARA, func(ctx context.Context) (int, error) {
+				return yarascan.New().LoadRules(rulesPath)
+			}, 24*time.Hour)
 		}
+	}
+
+	// 5h-bis. Démarrage du scheduler unifié : rafraîchit en arrière-plan
+	//         tous les référentiels enregistrés (DNS, CVE, threat intel, YARA).
+	//         Chaque source tourne à sa propre cadence, en parallèle.
+	if !*noAutoUpdate {
+		go sched.Start(context.Background())
+		log.Printf("[main] scheduler de rafraîchissement unifié démarré (%d source(s))", 4)
 	}
 
 	// 5i. Gamification : points, badges, streak — encourage la consultation
@@ -343,6 +363,7 @@ func main() {
 		secCenter.SetStatus(securitycenter.ProtFreshclam, securitycenter.StatusActive)
 	}
 	server.SetSecurityCenter(secCenter)
+	server.SetScheduler(sched)
 	summary := secCenter.GetSummary()
 	log.Printf("[main] centre de sécurité: %d/%d protections actives (score %d%%)",
 		summary.Active, summary.Total, summary.Score)
