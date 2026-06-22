@@ -296,4 +296,17 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 28px 60px; }
 #settings-msg .ok { color: var(--ok); font-size: 13px; }
 #settings-msg .bad { color: var(--danger); font-size: 13px; }
 
+/* Outils */
+.primary-btn {
+  background: var(--accent); color: #1a1a1a; border: none;
+  padding: 10px 22px; border-radius: 8px; font-weight: 600;
+  cursor: pointer; font-size: 14px; margin: 4px 0;
+}
+.primary-btn:hover { background: var(--accent-2); }
+.primary-btn:active { transform: scale(0.98); }
+#portscan-result, #dnsleak-result, #pw-result { margin-top: 12px; min-height: 20px; }
+.badge.allow { background: rgba(46,204,113,.15); color: var(--ok); }
+#tab-tools h3 { font-size: 15px; margin-top: 0; }
+#tab-tools .hint { margin-bottom: 8px; }
+
 

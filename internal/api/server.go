@@ -22,10 +22,12 @@ import (
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/cvefeed"
+	"github.com/dlnraja/faillefox/internal/middleware"
 	"github.com/dlnraja/faillefox/internal/refresher"
 	"github.com/dlnraja/faillefox/internal/securitycenter"
 	"github.com/dlnraja/faillefox/internal/settings"
 	"github.com/dlnraja/faillefox/internal/themes"
+	"github.com/dlnraja/faillefox/internal/tools"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
 
@@ -92,14 +94,27 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/themes", s.handleThemes)             // thèmes UI disponibles
 	mux.HandleFunc("/api/refresh-status", s.handleRefresh)    // état du scheduler
 	mux.HandleFunc("/api/settings", s.handleSettings)         // paramètres (GET/POST)
+	mux.HandleFunc("/api/tools/ports", s.handlePortScan)      // scanner de ports
+	mux.HandleFunc("/api/tools/dns-leak", s.handleDNSLeak)    // test fuite DNS
+	mux.HandleFunc("/api/tools/password", s.handlePassword)   // vérificateur mot de passe
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
 	mux.Handle("/", http.FileServer(http.FS(webRoot)))
 
+	// Application des middlewares de sécurité (défense en profondeur) :
+	//   1. LoopbackOnly : refuse toute IP non-loopback (même si bind erroné)
+	//   2. SecurityHeaders : CSP stricte + durcissement
+	//   3. RateLimiter : anti-abus (120 req/min, généreux pour l'UI)
+	rateLimiter := middleware.NewRateLimiter(120, time.Minute)
+	var handler http.Handler = mux
+	handler = middleware.SecurityHeaders(handler)
+	handler = middleware.LoopbackOnly(handler)
+	handler = rateLimiter.Middleware(handler)
+
 	s.httpSrv = &http.Server{
 		Addr:              fmt.Sprintf("127.0.0.1:%d", port),
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return s
@@ -305,8 +320,10 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Query().Get("path")
+	// Sécurité : sanitize le chemin pour bloquer le path traversal.
+	path = middleware.SanitizePath(path)
 	if path == "" {
-		http.Error(w, "paramètre path requis", http.StatusBadRequest)
+		http.Error(w, "paramètre path invalide (path traversal bloqué)", http.StatusBadRequest)
 		return
 	}
 	result, err := s.scanner.ScanFile(r.Context(), path)
@@ -406,6 +423,51 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "GET ou POST attendu", http.StatusMethodNotAllowed)
 	}
+}
+
+// ---- handlers outils gratuits (v0.14) ------------------------------------
+
+// handlePortScan scanne les ports ouverts sur localhost (surface d'attaque).
+// Sécurité : on force host=127.0.0.1 pour éviter tout scan externe via l'API.
+func (s *Server) handlePortScan(w http.ResponseWriter, r *http.Request) {
+	scanner := tools.NewPortScanner()
+	// Sécurité : UNIQUEMENT localhost (pas de scan d'hôtes externes via API).
+	results := scanner.Scan("127.0.0.1", 2*time.Second)
+	writeJSON(w, map[string]any{
+		"host":      "127.0.0.1",
+		"ports":     results,
+		"open_count": len(results),
+	})
+}
+
+// handleDNSLeak teste quels résolveurs DNS répondent (détection de fuite).
+func (s *Server) handleDNSLeak(w http.ResponseWriter, r *http.Request) {
+	tester := tools.NewDNSLeakTest()
+	resolvers := tester.Test()
+	writeJSON(w, map[string]any{
+		"resolvers": resolvers,
+	})
+}
+
+// handlePassword évalue la force d'un mot de passe fourni en POST.
+// SéCURITÉ : le mot de passe n'est JAMAIS stocké ni loggé — on ne renvoie
+// que des métriques (score, entropie, feedback).
+func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST attendu", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "JSON invalide", http.StatusBadRequest)
+		return
+	}
+	checker := tools.NewPasswordChecker()
+	strength := checker.Evaluate(body.Password)
+	// On ne renvoie JAMAIS le mot de passe dans la réponse.
+	writeJSON(w, strength)
 }
 
 // ---- helpers --------------------------------------------------------------

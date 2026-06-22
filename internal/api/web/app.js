@@ -507,6 +507,57 @@ async function saveSetting(el) {
   }
 }
 
+// ---- outils gratuits (ports, DNS, password) -----------------------------
+document.getElementById("btn-portscan")?.addEventListener("click", async () => {
+  const el = document.getElementById("portscan-result");
+  el.innerHTML = "<span class='hint'>Scan en cours…</span>";
+  try {
+    const data = await getJSON("/api/tools/ports");
+    if (!data.ports || data.ports.length === 0) {
+      el.innerHTML = "<span class='ok'>✓ Aucun port ouvert sur localhost</span>";
+    } else {
+      el.innerHTML = `<span class='warn'>⚠ ${data.open_count} port(s) ouvert(s) :</span><ul class="alerts">` +
+        data.ports.map((p) => `<li><strong>:${p.port}</strong> ${esc(p.service || "")} <span class="badge deny">OUVERT</span></li>`).join("") +
+        "</ul>";
+    }
+  } catch (err) { el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`; }
+});
+
+document.getElementById("btn-dnsleak")?.addEventListener("click", async () => {
+  const el = document.getElementById("dnsleak-result");
+  el.innerHTML = "<span class='hint'>Test en cours…</span>";
+  try {
+    const data = await getJSON("/api/tools/dns-leak");
+    if (!data.resolvers || data.resolvers.length === 0) {
+      el.innerHTML = "<span class='hint'>Aucun résolveur testé.</span>";
+    } else {
+      el.innerHTML = data.resolvers.map((r) =>
+        `<div class="set-row"><div><div class="set-label">${esc(r.provider)}</div><div class="set-hint">${esc(r.address)}</div></div>` +
+        `<span class="badge ${r.responding ? "allow" : "deny"}">${r.responding ? "Répond" : "Silencieux"}</span></div>`
+      ).join("");
+    }
+  } catch (err) { el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`; }
+});
+
+document.getElementById("pw-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const pw = fd.get("password");
+  if (!pw) return;
+  const el = document.getElementById("pw-result");
+  try {
+    const s = await postJSON("/api/tools/password", { password: pw });
+    const labels = ["Très faible", "Faible", "Moyen", "Fort", "Très fort"];
+    const colors = ["bad", "bad", "warn", "ok", "ok"];
+    const bar = "▰".repeat(s.score + 1) + "▱".repeat(4 - s.score);
+    el.innerHTML = `<div class="kv"><div>Force : <span class="${colors[s.score]}">${bar} ${esc(s.label)} (${s.score}/4)</span></div>` +
+      `<div>Entropie : <span class="v">${s.entropy} bits</span></div>` +
+      `<div>Conseil : ${esc(s.feedback)}</div></div>`;
+  } catch (err) { el.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`; }
+  // Sécurité : on vide le champ immédiatement.
+  e.target.reset();
+});
+
 // ---- bootstrap ------------------------------------------------------------
 (async function init() {
   try {

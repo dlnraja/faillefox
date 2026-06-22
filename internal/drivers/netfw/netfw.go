@@ -84,13 +84,21 @@ func (d *Driver) ApplyRules(rules []core.Rule) error {
 		if r.Action == core.DecisionAllow {
 			action = "allow"
 		}
-		name := d.rulePrefix + sanitize(r.AppID)
+		// Sécurité : on valide l'AppID (chemin d'exécutable) pour prévenir
+		// l'injection de commande via netsh. On refuse les chemins contenant
+		// des guillemets, des points-virgules, ou des caractères de shell.
+		safeAppID := sanitizeNetshPath(r.AppID)
+		if safeAppID == "" {
+			log.Printf("[netfw] AppID suspect ignoré: %q", r.AppID)
+			continue
+		}
+		name := d.rulePrefix + sanitize(safeAppID)
 		args := []string{
 			"advfirewall", "firewall", "add", "rule",
 			"name=" + name,
 			"dir=out",
 			"action=" + action,
-			"program=\"" + r.AppID + "\"",
+			"program=" + safeAppID,
 			"enable=yes",
 		}
 		if err := exec.Command("netsh", args...).Run(); err != nil {
@@ -120,6 +128,24 @@ func sanitize(s string) string {
 		":", "", "\\", "_", "/", "_", " ", "_",
 	)
 	return r.Replace(s)
+}
+
+// sanitizeNetshPath valide un chemin d'exécutable avant de le passer à netsh.
+// Refuse les caractères dangereux qui pourraient casser l'argument ou injecter
+// une commande : guillemets, points-virgules, pipes, backticks, $, %, &.
+// Renvoie "" si le chemin est suspect.
+func sanitizeNetshPath(path string) string {
+	if path == "" || len(path) > 1024 {
+		return ""
+	}
+	// Caractères systématiquement refusés (injection shell Windows).
+	dangerous := "\";|`$%&\x00!<>()\n\r"
+	for _, c := range dangerous {
+		if strings.ContainsRune(path, c) {
+			return ""
+		}
+	}
+	return path
 }
 
 // baseName extrait le nom de fichier d'un chemin.
