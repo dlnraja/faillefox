@@ -36,18 +36,20 @@ jobs:
         run: go mod download
 
       - name: Vet
-        # go vet détecte les constructions suspectes. Doit être propre.
-        run: go vet ./...
+        # go vet sur tous les packages SAUF le GUI desktop (Fyne = CGO, non
+        # disponible sur les runners CI standards sans dépendances OpenGL).
+        # Le GUI desktop est buildé séparément par desktop.yml.
+        run: go vet $(go list ./... | grep -v desktop | grep -v faillefox-gui)
 
       - name: Build
-        # Vérifie que TOUT le module compile, sur chaque OS.
-        run: go build ./...
+        # Vérifie que le module compile, hors GUI desktop.
+        run: go build $(go list ./... | grep -v desktop | grep -v faillefox-gui)
 
       - name: Test
-        run: go test -race -count=1 ./...
+        run: go test -race -count=1 $(go list ./... | grep -v desktop | grep -v faillefox-gui)
 
       - name: Build binary (smoke test)
-        # Compile le binaire réel pour confirmer que le point d'entrée
+        # Compile le binaire démon réel pour confirmer que le point d'entrée
         # est sain sur chaque plateforme.
         run: go build -o faillefox-${{ matrix.os }} ./cmd/faillefox
 
