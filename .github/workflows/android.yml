@@ -54,6 +54,10 @@ jobs:
           # Packages sur une seule ligne (le YAML multiligne cassait sdkmanager).
           packages: "platforms;android-34 build-tools;34.0.0 ndk;26.3.11579264"
 
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.7"
+
       - name: Install gomobile
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
@@ -98,16 +102,17 @@ jobs:
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          chmod +x ./gradlew || true
+          # On utilise gradle directement (installé via setup-gradle), pas
+          # ./gradlew (le wrapper binaire n'est pas dans le dépôt).
           if [ -f faillefox.jks ]; then
             echo "==> Build release (keystore configuré)"
-            ./gradlew assembleRelease
+            gradle assembleRelease --no-daemon
             cp app/build/outputs/apk/release/app-release-unsigned.apk \
                ../faillefox-${TAG}.apk || \
             cp app/build/outputs/apk/release/app-release.apk ../faillefox-${TAG}.apk
           else
             echo "==> Build debug (pas de keystore release — APK installable mais non Play Store)"
-            ./gradlew assembleDebug
+            gradle assembleDebug --no-daemon
             cp app/build/outputs/apk/debug/app-debug.apk ../faillefox-${TAG}.apk
           fi
           ls -la ../faillefox-${TAG}.apk
