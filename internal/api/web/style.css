@@ -274,4 +274,26 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 28px 60px; }
 .sec-card .cat { color: var(--accent-2); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
 .sec-card .stats { font-size: 11px; color: var(--fg); margin-top: 4px; }
 
+/* Paramètres */
+#settings-body h3 { font-size: 14px; color: var(--accent); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+#settings-body h3:first-child { margin-top: 0; }
+.set-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border); gap: 16px;
+}
+.set-row:last-child { border-bottom: none; }
+.set-label { font-size: 14px; font-weight: 500; }
+.set-hint { font-size: 12px; color: var(--fg-dim); margin-top: 2px; }
+.set-locked {
+  padding: 4px 10px; background: rgba(154,163,178,.15); color: var(--fg-dim);
+  border-radius: 4px; font-size: 12px; font-weight: 600;
+}
+.set-select {
+  background: var(--bg-card-2); border: 1px solid var(--border); color: var(--fg);
+  padding: 8px 10px; border-radius: 6px; font-size: 14px; min-width: 180px;
+}
+.set-select:focus { outline: none; border-color: var(--accent); }
+#settings-msg .ok { color: var(--ok); font-size: 13px; }
+#settings-msg .bad { color: var(--danger); font-size: 13px; }
+
 

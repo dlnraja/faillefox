@@ -395,6 +395,118 @@ async function refreshSecurityCenter() {
   }
 }
 
+// ---- paramètres : mode simple + avancé ----------------------------------
+const MODULES = [
+  { key: "firewall",       label: "Pare-feu par application",   icon: "🛡️", simple: true },
+  { key: "dns_sinkhole",   label: "DNS sinkhole (anti-pubs/trackers/malwares)", icon: "🌐", simple: true },
+  { key: "anti_ads",       label: "Anti-publicités",            icon: "🚫", simple: false },
+  { key: "anti_trackers",  label: "Anti-trackers",              icon: "🔍", simple: false },
+  { key: "anti_malware",   label: "Anti-malware (DNS)",         icon: "🦠", simple: true },
+  { key: "anti_phishing",  label: "Anti-phishing",              icon: "🎣", simple: false },
+  { key: "anti_ransomware",label: "Anti-ransomware",            icon: "🔐", simple: false },
+  { key: "av_scanner",     label: "Scanner ClamAV",             icon: "🔬", simple: false },
+  { key: "yara_scanner",   label: "Scanner YARA",               icon: "🧬", simple: false },
+  { key: "cve_feed",       label: "Veille CVE (NVD)",           icon: "📢", simple: false },
+  { key: "threat_intel",   label: "Threat intelligence",        icon: "🕵️", simple: false },
+  { key: "gamification",   label: "Gamification",               icon: "🎮", simple: false },
+  { key: "auto_update",    label: "Auto-update des listes",     icon: "🔄", simple: false },
+  { key: "freshclam",      label: "MAJ signatures ClamAV",      icon: "📥", simple: false },
+];
+
+async function loadSettings() {
+  const body = document.getElementById("settings-body");
+  const msgEl = document.getElementById("settings-msg");
+  try {
+    const s = await getJSON("/api/settings");
+    // Section mode simple (toujours visible).
+    let html = `<h3 style="margin-top:0">Mode simple</h3>`;
+    html += settingsToggle("ui_mode", "Mode interface", s.ui_mode === "advanced" ? "Avancé" : "Simple", s.ui_mode === "advanced", "advanced");
+    html += settingsToggle("auto_protect", "Protection automatique (recommandé)", "Active les protections recommandées", s.auto_protect, "auto_protect");
+    html += settingsToggle("auto_update", "Mises à jour automatiques", "Rafraîchit les listes DNS/CVE toutes les 6h", s.auto_update, "auto_update");
+    html += settingsToggle("cve_feed", "Veille des vulnérabilités (CVE)", "Alerte si un logiciel installé a une faille connue", s.cve_feed, "cve_feed");
+    html += settingsToggle("threat_intel", "Threat intelligence", "Croise les IOC publics (Abuse.ch, OTX)", s.threat_intel, "threat_intel");
+    html += settingsToggle("gamification", "Gamification", "Points, badges, streak de jours protégés", s.gamification, "gamification");
+
+    // Section mode avancé (tous les modules).
+    html += `<h3>Mode avancé — tous les modules</h3>`;
+    for (const m of MODULES) {
+      if (["ui_mode", "auto_protect", "auto_update", "cve_feed", "threat_intel", "gamification"].includes(m.key)) continue;
+      const checked = !!s[m.key];
+      html += settingsToggle(m.key, `${m.icon} ${m.label}`, "", checked, m.key);
+    }
+
+    // Réseau + thème.
+    html += `<h3>Réseau & interface</h3>`;
+    html += settingsSelect("profile", "Profil réseau", [
+      { v: "home", t: "🏠 Maison" },
+      { v: "office", t: "🏢 Bureau" },
+      { v: "public", t: "🌍 Public (strict)" },
+    ], s.profile);
+    html += settingsSelect("theme", "Thème", [
+      { v: "dark", t: "🌙 Sombre" },
+      { v: "light", t: "☀️ Clair" },
+      { v: "auto", t: "🖥️ Auto" },
+    ], s.theme);
+    html += settingsSelect("notifications", "Niveau de notifications", [
+      { v: "minimal", t: "Critiques seulement" },
+      { v: "normal", t: "Normal" },
+      { v: "verbose", t: "Verbeux (tout)" },
+    ], s.notifications);
+
+    // Loopback : affiché verrouillé (non négociable).
+    html += `<div class="set-row"><div><div class="set-label">🔒 Loopback uniquement</div><div class="set-hint">Le canal de contrôle n'écoute que sur 127.0.0.1 — non négociable</div></div><span class="set-locked">Verrouillé (activé)</span></div>`;
+
+    body.innerHTML = html;
+    msgEl.innerHTML = "";
+
+    // Branche les change handlers.
+    body.querySelectorAll("[data-setting]").forEach((el) => {
+      el.addEventListener("change", () => saveSetting(el));
+    });
+  } catch (err) {
+    body.innerHTML = "";
+    msgEl.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`;
+  }
+}
+
+function settingsToggle(key, label, hint, checked, id) {
+  return `<div class="set-row">
+    <div>
+      <div class="set-label">${esc(label)}</div>
+      ${hint ? `<div class="set-hint">${esc(hint)}</div>` : ""}
+    </div>
+    <label class="switch">
+      <input type="checkbox" data-setting="${esc(key)}" id="set-${esc(id)}" ${checked ? "checked" : ""} />
+      <span class="slider"></span>
+    </label>
+  </div>`;
+}
+
+function settingsSelect(key, label, options, current) {
+  const opts = options.map((o) => `<option value="${esc(o.v)}" ${o.v === current ? "selected" : ""}>${esc(o.t)}</option>`).join("");
+  return `<div class="set-row">
+    <div><div class="set-label">${esc(label)}</div></div>
+    <select data-setting="${esc(key)}" class="set-select">${opts}</select>
+  </div>`;
+}
+
+async function saveSetting(el) {
+  const key = el.dataset.setting;
+  let value;
+  if (el.type === "checkbox") value = el.checked;
+  else value = el.value;
+  const msgEl = document.getElementById("settings-msg");
+  try {
+    await postJSON("/api/settings", { [key]: value });
+    msgEl.innerHTML = `<span class="ok">✓ Enregistré</span>`;
+    setTimeout(() => { msgEl.innerHTML = ""; }, 2000);
+    // Si le thème change, on l'applique immédiatement.
+    if (key === "theme") { localStorage.setItem("faillefox-theme", value); applyTheme(value); }
+  } catch (err) {
+    msgEl.innerHTML = `<span class="bad">Erreur: ${esc(err.message)}</span>`;
+  }
+}
+
 // ---- bootstrap ------------------------------------------------------------
 (async function init() {
   try {
@@ -403,6 +515,7 @@ async function refreshSecurityCenter() {
     await refreshRules();
     await refreshStatus();
     refreshUpdater();
+    loadSettings();
     startEventStream();
     // Rafraîchit le centre de sécurité et l'auto-update toutes les 30s.
     setInterval(refreshSecurityCenter, 30000);

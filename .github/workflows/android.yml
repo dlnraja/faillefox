@@ -1,0 +1,104 @@
+# Build de l'APK Android (debug auto-signé + release si keystore configuré).
+#
+# Le keystore de release est optionnel : si le secret ANDROID_KEYSTORE_BASE64
+# n'est pas configuré, on publie un APK debug-signé (installable mais non
+# publiable sur Play Store). Avec le keystore, l'APK est signé pour release.
+#
+# Pour configurer la signature release (une fois) :
+#   1. keytool -genkey -v -keystore faillefox.jks -keyalg RSA -keysize 2048 \
+#        -validity 10000 -alias faillefox
+#   2. base64 faillefox.jks > keystore.b64
+#   3. Ajouter les secrets GitHub :
+#        ANDROID_KEYSTORE_BASE64 = contenu de keystore.b64
+#        ANDROID_KEY_ALIAS       = faillefox
+#        ANDROID_KEY_PASSWORD    = (votre mot de passe clé)
+#        ANDROID_STORE_PASSWORD  = (votre mot de passe keystore)
+name: Android APK
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Build & sign APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-34
+            build-tools;34.0.0
+            ndk;26.3.11579264
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+
+      - name: Build Go AAR (bindings moteur)
+        run: |
+          mkdir -p android/app/libs
+          gomobile bind -target=android/amd64,android/arm64 \
+            -o android/app/libs/faillefox.aar ./pkg/android
+
+      - name: Configure keystore (release) si secret présent
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/faillefox.jks
+          cat > android/keystore.properties <<EOF
+          storeFile=faillefox.jks
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build APK
+        working-directory: android
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          chmod +x ./gradlew || true
+          if [ -f faillefox.jks ]; then
+            echo "==> Build release (keystore configuré)"
+            ./gradlew assembleRelease
+            cp app/build/outputs/apk/release/app-release-unsigned.apk \
+               ../faillefox-${TAG}.apk || \
+            cp app/build/outputs/apk/release/app-release.apk ../faillefox-${TAG}.apk
+          else
+            echo "==> Build debug (pas de keystore release — APK installable mais non Play Store)"
+            ./gradlew assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../faillefox-${TAG}.apk
+          fi
+          ls -la ../faillefox-${TAG}.apk
+
+      - name: Upload APK to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: faillefox-*.apk

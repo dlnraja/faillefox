@@ -39,6 +39,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/platform/winsvc"
 	"github.com/dlnraja/faillefox/internal/refresher"
 	"github.com/dlnraja/faillefox/internal/securitycenter"
+	"github.com/dlnraja/faillefox/internal/settings"
 	"github.com/dlnraja/faillefox/internal/threatintel"
 	"github.com/dlnraja/faillefox/internal/updater"
 	"github.com/dlnraja/faillefox/internal/yarascan"
@@ -124,6 +125,12 @@ func main() {
 	engine := core.NewEngine(store)
 	if err := engine.Load(); err != nil {
 		log.Printf("[warn] impossible de charger les règles (%v), démarrage à vide", err)
+	}
+
+	// 2b. Paramètres utilisateur (mode simple/avancé, modules, thème...).
+	userSettings, err := settings.Load(filepath.Join(*dataDir, "settings.json"))
+	if err != nil {
+		log.Printf("[warn] settings: %v (utilisation des défauts)", err)
 	}
 
 	// 3. Journal persistant rotatif (sauf si désactivé).
@@ -289,10 +296,9 @@ func main() {
 			game.Level(), game.Points, game.Streak)
 	}
 
-	// 5j. Anti-ransomware : surveillance comportementale des dossiers sensibles.
-	//     Détecte ransom notes, extensions chiffrées, et activité d'écriture
-	//     anormale. La surveillance active par fsnotify arrive en v0.12 — ici
-	//     le détecteur est instancié et branché au journal.
+	// 5j. Anti-ransomware : surveillance ACTIVE des dossiers sensibles via
+	//     fsnotify. Détecte ransom notes, extensions chiffrées, et activité
+	//     d'écriture anormale (chiffrement) en temps réel.
 	if *antiransomOn {
 		detector := antiransom.New(func(a antiransom.Alert) {
 			log.Printf("[ANTIRANSOMWARE] %s: %s (%s)", a.Type, a.Title, a.Path)
@@ -300,9 +306,18 @@ func main() {
 				game.Record(gamification.ActionIOCBlocked)
 			}
 		})
-		log.Printf("[main] anti-ransomware activé: %d dossier(s) sensible(s) surveillé(s)",
-			len(detector.ProtectedDirs()))
-		_ = detector // branchement fsnotify en v0.12 (surveillance active)
+		watcher, err := antiransom.NewWatcher(detector)
+		if err != nil {
+			log.Printf("[warn] anti-ransomware: watcher indisponible (%v)", err)
+		} else {
+			go func() {
+				if err := watcher.Start(context.Background()); err != nil {
+					log.Printf("[warn] anti-ransomware watcher arrêté: %v", err)
+				}
+			}()
+			log.Printf("[main] anti-ransomware activé (surveillance fsnotify): %d dossier(s) sensible(s)",
+				len(detector.ProtectedDirs()))
+		}
 	}
 
 	// 6. Driver natif.
@@ -382,6 +397,7 @@ func main() {
 	}
 	server.SetSecurityCenter(secCenter)
 	server.SetScheduler(sched)
+	server.SetSettings(userSettings)
 	summary := secCenter.GetSummary()
 	log.Printf("[main] centre de sécurité: %d/%d protections actives (score %d%%)",
 		summary.Active, summary.Total, summary.Score)

@@ -166,3 +166,14 @@ jobs:
     permissions:
       contents: write
 
+  # Étape 3 : build l'APK Android auto-signé (en parallèle de la release).
+  android:
+    name: Trigger Android APK build
+    needs: bump
+    if: needs.bump.outputs.skip != 'true'
+    uses: ./.github/workflows/android.yml
+    with:
+      tag: ${{ needs.bump.outputs.new_tag }}
+    permissions:
+      contents: write
+

@@ -30,6 +30,7 @@
     <button class="tab" data-tab="update">Auto-update</button>
     <button class="tab" data-tab="cve">CVE</button>
     <button class="tab" data-tab="scan">Scan ClamAV</button>
+    <button class="tab" data-tab="settings">⚙️ Paramètres</button>
   </nav>
 
   <main>
@@ -150,6 +151,16 @@
           <button type="submit" class="primary">Scanner</button>
         </form>
         <div id="scan-result" class="kv"></div>
+      </div>
+    </section>
+
+    <!-- PARAMÈTRES : mode simple + avancé -->
+    <section id="tab-settings" class="panel">
+      <div class="card">
+        <h2>Paramètres</h2>
+        <p class="hint">Personnalisez Faillefox. Le <strong>mode simple</strong> regroupe les réglages essentiels ; le <strong>mode avancé</strong> expose chaque module individuellement.</p>
+        <div id="settings-msg"></div>
+        <div id="settings-body">chargement…</div>
       </div>
     </section>
   </main>

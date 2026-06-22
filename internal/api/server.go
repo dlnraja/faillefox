@@ -24,6 +24,7 @@ import (
 	"github.com/dlnraja/faillefox/internal/cvefeed"
 	"github.com/dlnraja/faillefox/internal/refresher"
 	"github.com/dlnraja/faillefox/internal/securitycenter"
+	"github.com/dlnraja/faillefox/internal/settings"
 	"github.com/dlnraja/faillefox/internal/themes"
 	"github.com/dlnraja/faillefox/internal/updater"
 )
@@ -50,6 +51,9 @@ type Server struct {
 
 	// Scheduler de rafraîchissement v0.10 — état des référentiels.
 	scheduler *refresher.Scheduler
+
+	// Paramètres utilisateur v0.12 — mode simple/avancé + modules.
+	settings *settings.Settings
 }
 
 // SetUpdater branche l'updater pour l'endpoint /api/updater.
@@ -66,6 +70,9 @@ func (s *Server) SetSecurityCenter(c *securitycenter.Center) { s.secCenter = c }
 
 // SetScheduler branche le scheduler de rafraîchissement pour /api/refresh-status.
 func (s *Server) SetScheduler(sch *refresher.Scheduler) { s.scheduler = sch }
+
+// SetSettings branche les paramètres utilisateur pour /api/settings.
+func (s *Server) SetSettings(st *settings.Settings) { s.settings = st }
 
 // New crée un serveur lié à 127.0.0.1:port.
 func New(engine *core.Engine, driver core.Driver, port int) *Server {
@@ -84,6 +91,7 @@ func New(engine *core.Engine, driver core.Driver, port int) *Server {
 	mux.HandleFunc("/api/security-center", s.handleSecCenter) // vue unifiée protections
 	mux.HandleFunc("/api/themes", s.handleThemes)             // thèmes UI disponibles
 	mux.HandleFunc("/api/refresh-status", s.handleRefresh)    // état du scheduler
+	mux.HandleFunc("/api/settings", s.handleSettings)         // paramètres (GET/POST)
 
 	// UI web embarquée dans le binaire.
 	webRoot, _ := fs.Sub(webFiles, "web")
@@ -369,6 +377,35 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		"enabled": true,
 		"sources": s.scheduler.Status(),
 	})
+}
+
+// handleSettings expose (GET) et met à jour (POST) les paramètres utilisateur.
+// LoopbackOnly est toujours forcé à true (non négociable) même si le client
+// tente de le désactiver.
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	if s.settings == nil {
+		http.Error(w, "settings non configurés", http.StatusServiceUnavailable)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, s.settings)
+	case http.MethodPost:
+		var patch map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			http.Error(w, "JSON invalide: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		// LoopbackOnly est non négociable : on le retire du patch client.
+		delete(patch, "loopback_only")
+		if err := s.settings.Update(patch); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, s.settings)
+	default:
+		http.Error(w, "GET ou POST attendu", http.StatusMethodNotAllowed)
+	}
 }
 
 // ---- helpers --------------------------------------------------------------
