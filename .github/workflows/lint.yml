@@ -24,7 +24,7 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
           # golangci-lint ne peut analyser que du code ciblant une version
           # de Go <= celle avec laquelle il a été compilé.
