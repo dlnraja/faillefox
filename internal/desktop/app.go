@@ -1,3 +1,5 @@
+//go:build desktop
+
 // Package desktop est l'interface cliente graphique native de Faillefox.
 //
 // Contrairement au panneau web (navigateur) et au TUI (terminal), cette

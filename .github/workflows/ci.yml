@@ -36,17 +36,16 @@ jobs:
         run: go mod download
 
       - name: Vet
-        # go vet sur tous les packages SAUF le GUI desktop (Fyne = CGO, non
-        # disponible sur les runners CI standards sans dépendances OpenGL).
-        # Le GUI desktop est buildé séparément par desktop.yml.
-        run: go vet $(go list ./... | grep -v desktop | grep -v faillefox-gui)
+        # go vet sur tous les packages. Le GUI desktop a un tag //go:build desktop
+        # qui l'exclut automatiquement du build par défaut (Fyne = CGO).
+        run: go vet ./...
 
       - name: Build
-        # Vérifie que le module compile, hors GUI desktop.
-        run: go build $(go list ./... | grep -v desktop | grep -v faillefox-gui)
+        # Vérifie que le module compile (hors desktop via tag de build).
+        run: go build ./...
 
       - name: Test
-        run: go test -race -count=1 $(go list ./... | grep -v desktop | grep -v faillefox-gui)
+        run: go test -race -count=1 ./...
 
       - name: Build binary (smoke test)
         # Compile le binaire démon réel pour confirmer que le point d'entrée

@@ -1,3 +1,5 @@
+//go:build desktop
+
 // Command faillefox-gui est l'interface desktop native de Faillefox.
 //
 // C'est un binaire SÉPARÉ de faillefox (qui reste pur Go sans CGO) car
