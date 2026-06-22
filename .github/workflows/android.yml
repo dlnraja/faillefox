@@ -60,11 +60,14 @@ jobs:
           gomobile init
 
       - name: Build Go AAR (bindings moteur)
+        env:
+          # gomobile utilise l'API level 16 par défaut, NON supportée par les
+          # NDK récents (minimum 21). On force le minimum supporté.
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.3.11579264
         run: |
           mkdir -p android/app/libs
-          # Verbeux pour diagnostiquer les erreurs gomobile.
           set -x
-          gomobile bind -v -target=android/amd64,android/arm64 \
+          gomobile bind -v -target=android/amd64,android/arm64 -androidapi 21 \
             -o android/app/libs/faillefox.aar ./pkg/android 2>&1 || {
             echo "==> gomobile bind échoué, logs ci-dessus"
             exit 1
