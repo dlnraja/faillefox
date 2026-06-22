@@ -169,6 +169,8 @@ jobs:
   # Étape 3 : build l'APK Android auto-signé (en parallèle de la release).
   # pkg/android est maintenant self-contained (aucune dépendance internal/*)
   # donc gomobile bind fonctionne sans configuration supplémentaire.
+  # NON BLOQUANT : si l'APK échoue (NDK, Gradle...), la release principale
+  # (binaires + installateur) n'est pas impactée. L'APK peut être build séparément.
   android:
     name: Trigger Android APK build
     needs: bump
