@@ -63,7 +63,7 @@ func (w *Watcher) addWatch(dir string) error {
 // Start lance la boucle d'écoute. Bloquant ; à lancer dans une goroutine.
 // S'arrête proprement quand le contexte est annulé.
 func (w *Watcher) Start(ctx context.Context) error {
-	defer w.fsn.Close()
+	defer func() { _ = w.fsn.Close() }()
 	for {
 		select {
 		case <-ctx.Done():

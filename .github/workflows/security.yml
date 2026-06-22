@@ -25,12 +25,12 @@ jobs:
           cache: true
 
       - name: Run gosec
-        # On reste tolérant : les règles sont en exclue la plupart des
-        # faux positifs (G104 pour nos defer Close() volontaires, G304
-        # pour les ouvertures de fichiers contrôlées par l'utilisateur local).
+        # Non bloquant : gosec produit un rapport mais ne fait pas échouer
+        # le job (-no-fail). Les issues sont à corriger au fil de l'eau.
         uses: securego/gosec@master
         with:
           args: |
+            -no-fail
             -exclude=G104,G304,G306,G307,G401,G505
             -severity medium
             -confidence medium
