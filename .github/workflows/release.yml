@@ -93,6 +93,35 @@ jobs:
           build_one darwin  amd64
           build_one darwin  arm64
 
+      - name: Sign Windows binaries (self-signed cert)
+        # Best-effort : un certificat auto-signé ne fait PAS disparaître les
+        # alertes AV (l'AV dira "éditeur inconnu"), mais c'est mieux que pas
+        # de signature du tout. Pour une signature reconnue, utiliser SignPath
+        # (voir docs/antivirus.md) ou un certificat payant.
+        run: |
+          # Génère un certificat self-signed de code-signing.
+          openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
+            -days 3650 -nodes -subj "/CN=Faillefox/O=dlnraja" \
+            -addext "extendedKeyUsage=codeSigning" 2>/dev/null
+          # Convertit en PFX (format Windows).
+          openssl pkcs12 -export -in cert.pem -inkey key.pem \
+            -out faillefox.pfx -passout pass:faillefox 2>/dev/null
+          # Signe les .exe Windows avec osslsigncode (dispo sur ubuntu-latest).
+          if command -v osslsigncode >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq libxml2 > /dev/null 2>&1 || true
+            for f in dist/faillefox-windows-*.exe; do
+              echo "Signature de $f..."
+              osslsigncode sign -pkcs12 faillefox.pfx -pass faillefox \
+                -t http://timestamp.digicert.com \
+                -in "$f" -out "${f}.signed" 2>/dev/null && mv "${f}.signed" "$f" || \
+                echo "  (osslsigncode indisponible, binaire non signé)"
+            done
+          else
+            echo "osslsigncode non disponible — binaires non signés (best-effort)"
+          fi
+          # Nettoyage des fichiers de clé.
+          rm -f key.pem cert.pem faillefox.pfx
+
       - name: Package archives + checksums
         # ZIP pour Windows (avec LICENSE/README/guide AV), tar.gz pour Unix,
         # puis sommes SHA256.

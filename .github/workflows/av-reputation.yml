@@ -1,0 +1,81 @@
+# Soumission automatique des binaires de release à VirusTotal (via API
+# publique gratuite) et à Microsoft Defender (via le portail de soumission).
+#
+# POURQUOI : soumettre chaque release à VirusTotal augmente la "réputation"
+# du binaire auprès des 70+ antivirus qui se synchronisent sur VT. Plus un
+# binaire est vu et analysé sans détection, plus sa réputation monte, et
+# moins les AV le signalent (faux positifs réduits).
+#
+# CONFIGURATION (une fois) :
+#   1. Créer un compte gratuit sur https://www.virustotal.com
+#   2. Récupérer la clé API (Profile → API Key)
+#   3. Ajouter le secret GitHub : VIRUSTOTAL_API_KEY
+#   4. Le workflow tournera automatiquement sur chaque release publiée.
+name: AV reputation (VirusTotal)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag de release à soumettre"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit to VirusTotal
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VIRUSTOTAL_API_KEY != '' }}
+    steps:
+      - name: Récupère les assets de la release
+        id: assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.release_tag || github.event.release.tag_name }}"
+          echo "Tag: $TAG"
+          mkdir -p submit
+          # Télécharge seulement le .exe Windows (le plus susceptible de
+          # déclencher des faux positifs — c'est lui qu'on veut "nettoyer").
+          gh release download "$TAG" --pattern "faillefox-setup-*.exe" --dir submit || true
+          gh release download "$TAG" --pattern "faillefox-windows-amd64.exe.zip" --dir submit || true
+          ls -la submit/
+
+      - name: Soumission à VirusTotal
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          if [ -z "$VT_API_KEY" ]; then
+            echo "Pas de clé VirusTotal (secret VIRUSTOTAL_API_KEY non configuré)."
+            echo "Configurez le secret pour activer l'auto-soumission."
+            exit 0
+          fi
+          for f in submit/*; do
+            if [ -f "$f" ]; then
+              echo "==> Soumission de $f à VirusTotal..."
+              # Upload via l'API publique (gratuite, 4 req/min).
+              RESP=$(curl -s -X POST "https://www.virustotal.com/api/v3/files" \
+                -H "x-apikey: $VT_API_KEY" \
+                -F "file=@$f")
+              # Extraction de l'ID d'analyse pour suivi.
+              ANALYSIS_ID=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('id','?'))" 2>/dev/null || echo "?")
+              echo "   Soumis. ID d'analyse: $ANALYSIS_ID"
+              sleep 16  # respecte la limite de 4 req/min
+            fi
+          done
+          echo "==> Soumission terminée. Les résultats seront visibles sur"
+          echo "    https://www.virustotal.com/gui/me/uploads après analyse."
+
+      - name: Lien de soumission Microsoft Defender (manuel)
+        run: |
+          echo "==> Pour Microsoft Defender, la soumission AUTOMATIQUE n'est pas"
+          echo "    possible via API publique (Microsoft exige un formulaire web)."
+          echo "    Lien de soumission manuelle (une fois par release) :"
+          echo "    https://www.microsoft.com/en-us/wdsi/filesubmission"
+          echo "    Commentaire suggéré : 'Open-source firewall (GPL-3.0),"
+          echo "    source: github.com/dlnraja/faillefox, no telemetry,"
+          echo "    no network exfiltration. False positive.'"
