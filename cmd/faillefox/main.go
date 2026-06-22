@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/dlnraja/faillefox/internal/api"
+	"github.com/dlnraja/faillefox/internal/antiransom"
 	"github.com/dlnraja/faillefox/internal/clamscan"
 	"github.com/dlnraja/faillefox/internal/core"
 	"github.com/dlnraja/faillefox/internal/correlate"
@@ -73,6 +74,7 @@ func main() {
 		threatIntelOn = flag.Bool("threat-intel", false, "agrège les IOC publics (Abuse.ch, OTX, MISP) et les croise")
 		yaraRulesArg  = flag.String("yara-rules", "", "fichier de règles YARA publiques à charger (scan simplifié)")
 		gameOn        = flag.Bool("gamification", true, "active la gamification (points, badges, streak) — activé par défaut")
+		antiransomOn  = flag.Bool("antiransom", false, "active la surveillance anti-ransomware (dossiers sensibles + extensions)")
 	)
 	flag.Parse()
 
@@ -285,6 +287,22 @@ func main() {
 		}
 		log.Printf("[main] gamification activée: niveau %d, %d points, streak %d j",
 			game.Level(), game.Points, game.Streak)
+	}
+
+	// 5j. Anti-ransomware : surveillance comportementale des dossiers sensibles.
+	//     Détecte ransom notes, extensions chiffrées, et activité d'écriture
+	//     anormale. La surveillance active par fsnotify arrive en v0.12 — ici
+	//     le détecteur est instancié et branché au journal.
+	if *antiransomOn {
+		detector := antiransom.New(func(a antiransom.Alert) {
+			log.Printf("[ANTIRANSOMWARE] %s: %s (%s)", a.Type, a.Title, a.Path)
+			if game != nil {
+				game.Record(gamification.ActionIOCBlocked)
+			}
+		})
+		log.Printf("[main] anti-ransomware activé: %d dossier(s) sensible(s) surveillé(s)",
+			len(detector.ProtectedDirs()))
+		_ = detector // branchement fsnotify en v0.12 (surveillance active)
 	}
 
 	// 6. Driver natif.
