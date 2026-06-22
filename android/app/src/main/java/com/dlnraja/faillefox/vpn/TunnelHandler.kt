@@ -61,8 +61,8 @@ class TunnelHandler(
             }
             val protoStr = when (proto) { 6 -> "tcp"; 17 -> "udp"; else -> "ip" }
 
-            // Décision du moteur Go.
-            val decision = engine.decide("android", protoStr, dstIp, dstPort)
+            // Décision du moteur Go. gomobile mappe int Go -> long Java/Kotlin.
+            val decision = engine.decide("android", protoStr, dstIp, dstPort.toLong())
             when (decision) {
                 "allow" -> { /* forward : v0.14 implémentera le NAT complet */ }
                 "deny"  -> { /* drop */ }

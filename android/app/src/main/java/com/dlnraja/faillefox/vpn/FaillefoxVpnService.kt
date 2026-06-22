@@ -20,8 +20,9 @@ import android.Engine
 class FaillefoxVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    // Moteur Go (gomobile) partagé pour les décisions de filtrage.
-    private val engine = NewEngine()
+    // Moteur Go (gomobile). gomobile génère newEngine() comme fonction
+    // package-level du package "android" (minuscule en Kotlin).
+    private val engine: Engine = newEngine()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, buildNotification())
