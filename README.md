@@ -104,7 +104,8 @@ Faillefox combine plusieurs boucliers réseau, tous gratuits et libres :
 - 🛡️ **Revue sécurité continue** (v0.12) — analyse gosec sur chaque PR.
 
 Le tout pilotable depuis **plusieurs interfaces clientes** :
-- 🌐 **Panneau web local** (http://127.0.0.1:8443) — 8 onglets, jamais exposé au réseau
+- 🖥️ **Application desktop native** (`faillefox-gui`) — vraie fenêtre Windows/Linux/macOS (Fyne), 4 onglets. Voir [docs/desktop.md](docs/desktop.md).
+- 🌐 **Panneau web local** (http://127.0.0.1:8443) — 9 onglets, jamais exposé au réseau
 - 🖥️ **TUI terminal** (`faillefox -tui`) — interface plein écran façon `htop`, compatible Windows/macOS/Linux/SSH
 - 📱 **App Android** (APK auto-signé en CI) — interrupteur + VpnService
 - 🔧 **CLI** (`faillefox -list-drivers`, `-winsvc install`, etc.)

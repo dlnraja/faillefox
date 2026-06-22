@@ -181,3 +181,15 @@ jobs:
     permissions:
       contents: write
 
+  # Étape 4 : build les binaires GUI desktop (Fyne, CGO) pour Win/Linux/macOS.
+  # Binaire séparé du démon (faillefox-gui) car Fyne nécessite CGO + OpenGL.
+  desktop:
+    name: Trigger Desktop GUI build
+    needs: bump
+    if: needs.bump.outputs.skip != 'true'
+    uses: ./.github/workflows/desktop.yml
+    with:
+      tag: ${{ needs.bump.outputs.new_tag }}
+    permissions:
+      contents: write
+
