@@ -14,18 +14,24 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import com.dlnraja.faillefox.R
 import com.dlnraja.faillefox.ui.MainActivity
-// Moteur Go généré par gomobile bind (package racine = "android").
-import android.Engine
+// Moteur Go généré par gomobile bind. Le binding expose le package "android"
+// de Go. On l'instancie lazy dans onStartCommand pour éviter les erreurs
+// de résolution au compile-time (gomobile génère les noms dynamiquement).
+import android.Engine as GoEngine
 
 class FaillefoxVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    // Moteur Go (gomobile). gomobile génère newEngine() comme fonction
-    // package-level du package "android" (minuscule en Kotlin).
-    private val engine: Engine = newEngine()
+    private var engine: GoEngine? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, buildNotification())
+        // Instanciation différée du moteur Go (le binding AAR doit être chargé).
+        try {
+            engine = GoEngine()
+        } catch (e: Exception) {
+            android.util.Log.w("Faillefox/Vpn", "moteur Go indisponible: ${e.message}")
+        }
         establishVpn()
         return START_STICKY
     }
