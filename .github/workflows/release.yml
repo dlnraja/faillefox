@@ -109,7 +109,7 @@ jobs:
           ls -la
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # tag_name explicite : utilise inputs.tag si appelé via workflow_call,
           # sinon le tag qui a déclenché le workflow (github.ref_name).
@@ -140,7 +140,7 @@ jobs:
           mv dist/*.deb dist/faillefox-latest.deb || true
 
       - name: Upload .deb to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: dist/*.deb
@@ -188,7 +188,7 @@ jobs:
           Get-ChildItem deploy/windows/Output/ -ErrorAction SilentlyContinue
 
       - name: Upload installer to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: deploy/windows/Output/faillefox-setup-*.exe
