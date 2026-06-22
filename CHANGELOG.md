@@ -34,7 +34,13 @@ Rien pour l'instant.## [v0.7.0] - 2026-06-21
 
 ### Ajouté
 
+### Corrigé## [v0.13.8] - 2026-06-22
+
+### Ajouté
+
 ### Corrigé
+
+
 ## [v0.13.7] - 2026-06-22
 
 ### Ajouté
