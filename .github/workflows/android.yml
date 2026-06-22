@@ -68,14 +68,22 @@ jobs:
             -o android/app/libs/faillefox.aar ./pkg/android
 
       - name: Configure keystore (release) si secret présent
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PWD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/faillefox.jks
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "Pas de keystore release -> APK debug-signé"
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/faillefox.jks
           cat > android/keystore.properties <<EOF
           storeFile=faillefox.jks
-          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          storePassword=$STORE_PWD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PWD
           EOF
 
       - name: Build APK
