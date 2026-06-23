@@ -47,7 +47,7 @@ jobs:
     steps:
       # Si appelé via workflow_call, on checkout le tag fourni ; sinon on
       # utilise le comportement par défaut (le tag qui a déclenché le push).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -155,7 +155,7 @@ jobs:
     name: Build installable packages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -180,7 +180,7 @@ jobs:
     name: Build Windows installer (.exe Inno Setup)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
