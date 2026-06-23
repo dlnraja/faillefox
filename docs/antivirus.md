@@ -132,7 +132,7 @@ Microsoft Defender est l'AV le plus important sur Windows. La soumission
 | Approche | Efficacité | Coût |
 |----------|------------|------|
 | SignPath (signature reconnue) | ⭐⭐⭐⭐ | Gratuit (OSS) |
-| Soumission VirusTotal | ⭐⭐⭐ | Gratuit |
+| **avsubmit** (3 labs via API) | ⭐⭐⭐ | Gratuit |
 | Soumission Defender manuelle | ⭐⭐⭐⭐ | Gratuit |
 | Self-signed cert | ⭐ | Gratuit (best-effort) |
 | Certificat OV payant | ⭐⭐⭐⭐⭐ | ~300-600 €/an |
@@ -140,8 +140,57 @@ Microsoft Defender est l'AV le plus important sur Windows. La soumission
 
 **Aucune de ces approches ne garantit 0 alerte.** Même les binaires signés EV
 peuvent être signalés par un AV heuristique. La combinaison
-**SignPath + VirusTotal + soumission Defender** donne les meilleurs résultats
+**SignPath + avsubmit + soumission Defender** donne les meilleurs résultats
 gratuits possibles.
+
+---
+
+## 6. Outil `avsubmit` — soumission automatique multi-labs
+
+Faillefox inclut un outil dédié (`cmd/avsubmit`) qui soumet un binaire à
+**3 labs AV via leurs API publiques gratuites** (pas de navigateur, pas de
+captcha, pas d'intervention manuelle) :
+
+| Lab | API | Clé requise | Inscrit auprès de |
+|-----|-----|-------------|-------------------|
+| **VirusTotal** | v3 | `VIRUSTOTAL_API_KEY` | 70+ AV synchronisés |
+| **Hybrid Analysis** | v2 | `HYBRID_ANALYSIS_API_KEY` | FalconCrowdStrike + communauté |
+| **MetaDefender Cloud** | v4 | `METADEFENDER_API_KEY` | OPSWAT + 40 moteurs |
+
+### Automatisation CI (déjà configurée)
+
+Le workflow `av-reputation.yml` soumet automatiquement chaque release aux
+labs configurés. Ajoutez les 3 secrets GitHub (optionnels — sans eux, le
+workflow saute proprement) :
+
+```
+VIRUSTOTAL_API_KEY      = votre clé https://www.virustotal.com (Profile > API Key)
+HYBRID_ANALYSIS_API_KEY = votre clé https://www.hybrid-analysis.com (Profile > API Key)
+METADEFENDER_API_KEY    = votre clé https://metadefender.opswat.com (Sign up > API)
+```
+
+### Usage manuel
+
+```bash
+# Compiler l'outil
+go build -o avsubmit ./cmd/avsubmit
+
+# Soumettre un fichier (lit les clés depuis l'environnement)
+export VIRUSTOTAL_API_KEY=votre-clé
+./avsubmit -file faillefox.exe
+
+# Vérifier un hash déjà soumis (sans upload)
+./avsubmit -check abc123def456...
+```
+
+### Labs sans API publique (formulaire web only)
+
+Ces labs n'exposent PAS d'API d'upload gratuite. Pour eux, utiliser le
+script `deploy/windows/submit-to-av.ps1` qui ouvre les 13 formulaires dans
+le navigateur :
+
+Microsoft Defender, Bitdefender, ESET, Avast/AVG, Sophos, Trend Micro,
+Malwarebytes, Comodo, F-Secure, Avira, G Data, Kaspersky OpenTIP.
 
 ---
 
