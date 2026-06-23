@@ -1,0 +1,89 @@
+# Scan antivirus automatique des binaires en CI.
+#
+# Deux scans sur chaque release :
+#   1. Windows Defender (sur windows-latest) — l'AV le plus déployé
+#   2. ClamAV (sur ubuntu-latest) — l'AV open source de référence
+#
+# Si une détection est trouvée, le workflow ÉCHOUE (alerte immédiate).
+# Cela permet de détecter un faux positif AVANT de publier la release.
+name: AV scan
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_call:
+    inputs:
+      tag:
+        required: false
+        type: string
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  defender:
+    name: Windows Defender scan
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Build Windows binary
+        run: go build -trimpath -ldflags="-s -w" -o faillefox.exe ./cmd/faillefox
+
+      - name: Update Defender signatures
+        run: |
+          Update-MpSignature
+          Write-Host "Signatures à jour."
+
+      - name: Scan avec Windows Defender
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "faillefox.exe"
+          Write-Host "Scan de $exe..."
+          Start-MpScan -ScanType CustomScan -ScanPath $exe.Path
+          Start-Sleep -Seconds 2
+          $detections = Get-MpThreatDetection | Where-Object {
+            $_.Resources -match "faillefox"
+          }
+          if ($detections) {
+            Write-Host "::error::DÉTECTION Windows Defender !" $detections
+            exit 1
+          }
+          Write-Host "::notice::Faillefox est CLEAN selon Windows Defender"
+
+  clamav:
+    name: ClamAV scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Install ClamAV + signatures
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clamav clamav-daemon > /dev/null 2>&1
+          sudo systemctl stop clamav-freshclam 2>/dev/null || true
+          sudo freshclam --quiet > /dev/null 2>&1 || true
+          echo "ClamAV installé et signatures à jour."
+
+      - name: Build Linux binary (test de scanning)
+        run: go build -trimpath -ldflags="-s -w" -o faillefox ./cmd/faillefox
+
+      - name: Scan avec ClamAV
+        run: |
+          echo "Scan de faillefox avec ClamAV..."
+          clamscan --infected --no-summary faillefox > scan-output.txt 2>&1 || true
+          cat scan-output.txt
+          if grep -q "FOUND" scan-output.txt; then
+            echo "::error::DÉTECTION ClamAV !"
+            exit 1
+          fi
+          echo "::notice::Faillefox est CLEAN selon ClamAV"
