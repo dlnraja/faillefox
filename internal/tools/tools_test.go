@@ -86,14 +86,10 @@ func TestPasswordGenerateContainsChar(t *testing.T) {
 // TestPortScannerScan vérifie le scan sur une cible invalide (pas de crash).
 func TestPortScannerScan(t *testing.T) {
 	s := NewPortScanner()
-	// Scan sur une IP inexistante = aucun port ouvert, pas de crash.
-	results := s.Scan("192.0.2.1", 1) // TEST-NET, timeout très court
-	for _, r := range results {
-		if r.Open {
-			// Acceptable sur localhost (ports ouverts possibles), mais
-			// sur TEST-NET on ne devrait rien trouver.
-		}
-	}
+	// Scan sur une IP inexistante (TEST-NET) avec timeout très court.
+	// On vérifie juste que ça ne panic pas, sans assertion stricte sur les
+	// résultats (TEST-NET peut théoriquement répondre selon le réseau CI).
+	_ = s.Scan("192.0.2.1", 1)
 }
 
 // TestDNSLeakTest ne crash pas.

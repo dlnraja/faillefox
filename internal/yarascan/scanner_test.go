@@ -1,6 +1,7 @@
 package yarascan
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,21 +38,25 @@ func TestLoadRules(t *testing.T) {
 // TestScanFileMatch vérifie qu'un fichier contenant une signature est détecté.
 func TestScanFileMatch(t *testing.T) {
 	dir := t.TempDir()
-	// Écrit une règle.
 	rulePath := filepath.Join(dir, "rules.yar")
-	os.WriteFile(rulePath, []byte(`rule detect_test {
+	if err := os.WriteFile(rulePath, []byte(`rule detect_test {
 		strings:
 			$s1 = "EVIL_MARKER_12345"
 		condition:
 			$s1
-	}`), 0o644)
-	// Écrit un fichier qui contient la signature.
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	target := filepath.Join(dir, "malware.bin")
-	os.WriteFile(target, []byte("This file contains EVIL_MARKER_12345 payload"), 0o644)
+	if err := os.WriteFile(target, []byte("This file contains EVIL_MARKER_12345 payload"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	s := New()
-	s.LoadRules(rulePath)
-	matches, err := s.ScanFile(nil, target)
+	if _, err := s.LoadRules(rulePath); err != nil {
+		t.Fatal(err)
+	}
+	matches, err := s.ScanFile(context.TODO(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,18 +69,24 @@ func TestScanFileMatch(t *testing.T) {
 func TestScanFileNoMatch(t *testing.T) {
 	dir := t.TempDir()
 	rulePath := filepath.Join(dir, "rules.yar")
-	os.WriteFile(rulePath, []byte(`rule detect_test {
+	if err := os.WriteFile(rulePath, []byte(`rule detect_test {
 		strings:
 			$s1 = "MALWARE_SIGNATURE_HERE"
 		condition:
 			$s1
-	}`), 0o644)
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	target := filepath.Join(dir, "clean.txt")
-	os.WriteFile(target, []byte("This is a perfectly clean file"), 0o644)
+	if err := os.WriteFile(target, []byte("This is a perfectly clean file"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	s := New()
-	s.LoadRules(rulePath)
-	matches, err := s.ScanFile(nil, target)
+	if _, err := s.LoadRules(rulePath); err != nil {
+		t.Fatal(err)
+	}
+	matches, err := s.ScanFile(context.TODO(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,8 +99,10 @@ func TestScanFileNoMatch(t *testing.T) {
 func TestScanNoRules(t *testing.T) {
 	s := New()
 	target := filepath.Join(t.TempDir(), "test.txt")
-	os.WriteFile(target, []byte("test"), 0o644)
-	_, err := s.ScanFile(nil, target)
+	if err := os.WriteFile(target, []byte("test"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.ScanFile(context.TODO(), target)
 	if err == nil {
 		t.Error("devrait échouer sans règles chargées")
 	}
