@@ -50,7 +50,13 @@ Rien pour l'instant.## [v0.7.0] - 2026-06-21
 
 ### Ajouté
 
+### Corrigé## [v0.17.1] - 2026-06-23
+
+### Ajouté
+
 ### Corrigé
+
+
 ## [v0.17.0] - 2026-06-22
 
 ### Ajouté
